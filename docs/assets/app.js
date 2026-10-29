@@ -63,32 +63,48 @@ function serverMinutesNow(win) {
   return h * 60 + m + Math.floor((Date.now() - S.loadedAt) / 60000);
 }
 
-function remainText(win) {
+function minutesLeft(win) {
   const [ch, cm] = win.close.split(':').map(Number);
-  const left = ch * 60 + cm - serverMinutesNow(win);
-  if (left <= 0) return 'ใกล้หมดเวลา';
-  return 'เหลือ ' + (left >= 60 ? Math.floor(left / 60) + ' ชม. ' : '') + (left % 60) + ' นาที';
+  return ch * 60 + cm - serverMinutesNow(win);
 }
 
 function renderStatus() {
   if (!S.info) return;
   const w = S.info.window;
   const el = $('#statusCard');
+  const total = S.info.clubs.length;
+  const sent = S.info.clubs.filter(c => c.submitted).length;
+  const sentPct = total ? Math.round(sent / total * 100) : 0;
   if (w.isOpen) {
     const [oh, om] = w.open.split(':').map(Number), [ch, cm] = w.close.split(':').map(Number);
     const span = ch * 60 + cm - (oh * 60 + om);
-    const pct = w.mode === 'เปิดตลอด' ? 100 : Math.max(0, Math.min(100, 100 - (serverMinutesNow(w) - oh * 60 - om) / span * 100));
+    const always = w.mode === 'เปิดตลอด';
+    const left = Math.max(0, minutesLeft(w));
+    const timePct = always ? 100 : Math.max(0, Math.min(100, left / span * 100));
+    const timeBig = always ? 'เปิดตลอด'
+      : left >= 60 ? Math.floor(left / 60) + '<small> ชม. </small>' + (left % 60) + '<small> นาที</small>'
+      : left + '<small> นาที</small>';
     el.className = 'card status open';
-    el.innerHTML = '<span class="dot"></span><div class="body"><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week + (w.week === S.info.weeks ? ' (ส่งผล)' : '') +
-      '</b><div class="muted small">' + thDate(w.weekDate) + ' · ' + w.open + '–' + w.close + ' น. · ' +
-      (w.mode === 'เปิดตลอด' ? 'แอดมินเปิดไว้ตลอด' : '<b style="font-size:inherit;color:var(--pink)">' + remainText(w) + '</b>') +
-      '</div><div class="timebar"><i style="width:' + pct + '%"></i></div></div>';
+    el.innerHTML = '<div class="st-top"><span class="dot"></span><div class="body"><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week +
+      (w.week === S.info.weeks ? ' (ส่งผล)' : '') + '</b><div class="muted small">' + thDate(w.weekDate, true) + ' · ' + w.open + '–' + w.close + ' น.</div></div></div>' +
+      '<div class="stat-grid">' +
+      '<div class="stat"><small>เช็คชื่อแล้ว</small><b>' + sent + '<small> / ' + total + ' ชุมนุม</small></b>' +
+      '<div class="timebar sent"><i style="width:' + sentPct + '%"></i></div></div>' +
+      '<div class="stat' + (!always && left <= 15 ? ' hurry' : '') + '"><small>' + (always ? 'สถานะ' : 'เหลือเวลา') + '</small><b>' + timeBig + '</b>' +
+      '<div class="timebar"><i style="width:' + timePct + '%"></i></div></div></div>';
   } else {
     el.className = 'card status closed';
-    el.innerHTML = '<span class="dot"></span><div class="body"><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
-      (w.next ? '<br>ครั้งถัดไป <b style="font-size:inherit;color:var(--blue)">' + thDate(w.next, true) + ' ' + w.open + ' น.</b>' : '') + '</div></div>';
+    el.innerHTML = '<div class="st-top"><span class="dot"></span><div class="body"><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
+      (w.next ? '<br>ครั้งถัดไป <b style="font-size:inherit;color:var(--blue)">' + thDate(w.next, true) + ' ' + w.open + ' น.</b>' : '') + '</div></div></div>' +
+      (w.week ? '<div class="muted small" style="margin-top:.5em">สัปดาห์ที่ ' + w.week + ' เช็คชื่อแล้ว <b>' + sent + '/' + total + '</b> ชุมนุม</div>' : '');
   }
 }
+
+// อัปเดตยอดส่งบนหน้าแรกทุก 1 นาทีขณะเปิดหน้าอยู่
+setInterval(() => {
+  if (!S.info || $('#viewClubs').hidden || document.hidden) return;
+  API.call('info').then(i => { S.info = i; S.loadedAt = Date.now(); renderStatus(); renderClubs(); }).catch(() => {});
+}, 60000);
 
 function renderClubs() {
   if (!S.info) return;
@@ -148,6 +164,7 @@ function goHome() {
   S.code = '';
   $('#viewCheck').hidden = true;
   $('#bottomBar').hidden = true;
+  document.documentElement.style.setProperty('--bar-h', '0px');
   $('#viewClubs').hidden = false;
   window.scrollTo(0, 0);
   API.call('info').then(i => { S.info = i; S.loadedAt = Date.now(); renderHome(); }).catch(() => {});
@@ -222,6 +239,8 @@ function renderCheck() {
   view.innerHTML = html;
 
   $('#btnBack').addEventListener('click', () => history.back());
+  // เปิดประวัติแล้วเลื่อนให้เห็นตาราง ไม่ให้อยู่ใต้แถบปุ่มส่ง
+  $('#histBox').addEventListener('toggle', e => { if (e.target.open) setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); });
   $$('#switch button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
   if ($('#btnAllPass')) $('#btnAllPass').addEventListener('click', () => { d.students.forEach(s => { S.marks[s.id] = 'ผ'; }); refresh(true); });
   if ($('#btnByPct')) $('#btnByPct').addEventListener('click', () => {
@@ -370,7 +389,9 @@ function tally() {
 function updateTotals() {
   const d = S.data;
   const show = canEdit() && !!S.mode;
-  $('#bottomBar').hidden = !show;
+  const bar = $('#bottomBar');
+  bar.hidden = !show;
+  document.documentElement.style.setProperty('--bar-h', show ? bar.offsetHeight + 'px' : '0px');
   if (!d.active) return;
   const t = tally(), total = d.students.length || 1;
   // วงแหวนสรุป
@@ -473,6 +494,7 @@ async function onSend(e) {
 function showDone(data, week, t, grade) {
   S.data = data;
   $('#bottomBar').hidden = true;
+  document.documentElement.style.setProperty('--bar-h', '0px');
   const n = k => '<b data-count="' + k + '">0</b>';
   const perfect = !grade && !t['0'] && !t['ล'];
   const r = data.rights;

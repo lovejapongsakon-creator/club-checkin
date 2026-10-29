@@ -124,7 +124,12 @@ function renderOverview(body) {
     '<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:4px"><b>รายชุมนุม</b>' +
     '<div class="seg"><button data-f="all" class="' + (A.filter === 'all' ? 'on' : '') + '" style="min-width:70px">ทั้งหมด</button>' +
     '<button data-f="pending" class="' + (A.filter === 'pending' ? 'on' : '') + '" style="min-width:90px">ยังไม่ส่ง</button></div></div>' +
-    (clubs.length ? clubs.map(clubRowHtml).join('') : '<div class="empty">ทุกชุมนุมส่งครบแล้ว 🎉</div>') + '</div>';
+    (clubs.length
+      ? '<div class="ctable-wrap"><table class="ctable"><thead><tr><th>#</th><th>ชุมนุม</th><th class="num">สมาชิก</th><th>สถานะ</th>' +
+        (isGrade ? '<th class="num">ผ</th><th class="num">มผ</th>' : '<th class="num">มา</th><th class="num">ลา</th><th class="num">ขาด</th>') +
+        '<th>ร้อยละ' + (isGrade ? 'ผ่าน' : 'มา') + '</th><th>ส่งล่าสุด</th><th class="acts-h">จัดการ</th></tr></thead><tbody>' +
+        clubs.map(clubRowHtml).join('') + '</tbody></table></div>'
+      : '<div class="empty">ทุกชุมนุมส่งครบแล้ว</div>') + '</div>';
 
   $('#ovWeek').addEventListener('change', e => act(null, async () => { A.dash = await call('adminDashboard', { week: e.target.value }); render(); }));
   $('#ovRefresh').addEventListener('click', e => act(e.currentTarget, async () => { A.dash = await call('adminDashboard', { week: A.dash.week }); render(); }, 'อัปเดตแล้ว'));
@@ -134,27 +139,33 @@ function renderOverview(body) {
 
 function clubRowHtml(c) {
   const st = c.status, d = A.dash, isGrade = d.week === d.weeks;
-  let chip, line = '';
-  if (st && st.count) {
-    chip = '<span class="chip ok">ส่งแล้ว ' + st.count + ' ครั้ง</span>';
-    line = (isGrade ? 'ผ ' + st.present + ' · มผ ' + st.absent : 'มา ' + st.present + ' · ลา ' + st.leave + ' · ขาด ' + st.absent) +
-      ' · ' + thStamp(st.last) + (st.by ? ' · ' + esc(st.by) : '');
-  } else {
-    chip = '<span class="chip warn">ยังไม่ส่ง</span>';
-  }
+  const sent = !!(st && st.count);
   const openUntil = st && st.until && st.until >= d.now;
-  return '<div class="adm-club"><div class="info"><b>' + c.icon + ' ' + Number(c.no) + '. ' + esc(c.name) + '</b> ' + chip +
-    (openUntil ? ' <span class="chip">เปิดพิเศษถึง ' + thStamp(st.until) + '</span>' : '') +
-    (st && st.extra ? ' <span class="chip gray">แก้เพิ่ม +' + st.extra + '</span>' : '') +
-    '<div class="muted small">' + esc(c.teachers.join(', ')) + ' · ' + c.count + ' รูป</div>' +
-    (line ? '<div class="small">' + line + '</div>' : '') + '</div>' +
-    '<div class="acts"><button class="btn sm" data-act="view" data-no="' + c.no + '">' + (st && st.count ? 'ดู/แก้ไข' : 'เพิ่มข้อมูล') + '</button>' +
-    (st && st.count ? '<button class="btn sm" data-act="edit" data-no="' + c.no + '">+ สิทธิ์แก้ไข</button>' +
+  const num = (v, cls, label) => '<td class="num ' + cls + '" data-l="' + label + '">' + (sent ? v : '<span class="muted">–</span>') + '</td>';
+  const tot = sent ? st.present + st.leave + st.absent : 0;
+  const pct = sent && tot ? Math.round(st.present / tot * 100) : null;
+  const status = (sent ? '<span class="chip ok">ส่งแล้ว' + (st.count > 1 ? ' · แก้ ' + (st.count - 1) : '') + '</span>' : '<span class="chip warn">ยังไม่ส่ง</span>') +
+    (openUntil ? '<span class="chip">เปิดพิเศษถึง ' + st.until.slice(11) + ' น.</span>' : '') +
+    (st && st.extra ? '<span class="chip gray">แก้เพิ่ม +' + st.extra + '</span>' : '');
+  const cells = isGrade
+    ? num(st && st.present, 'c-ok', 'ผ') + num(st && st.absent, 'c-bad', 'มผ')
+    : num(st && st.present, 'c-ok', 'มา') + num(st && st.leave, 'c-warn', 'ลา') + num(st && st.absent, 'c-bad', 'ขาด');
+  return '<tr class="' + (sent ? 'is-sent' : 'is-pending') + '">' +
+    '<td class="no"><span class="mono c' + (Number(c.no) % 3) + '">' + Number(c.no) + '</span></td>' +
+    '<td class="name"><b>' + esc(c.name) + '</b><small>' + esc(c.teachers.join(', ')) + '</small></td>' +
+    '<td class="num" data-l="สมาชิก">' + c.count + '</td>' +
+    '<td class="stat-c" data-l="สถานะ"><div class="chips">' + status + '</div></td>' + cells +
+    '<td class="pct" data-l="ร้อยละ">' + (pct === null ? '<span class="muted">–</span>'
+      : '<div class="pbar' + (pct < 80 ? ' low' : '') + '"><i style="width:' + pct + '%"></i></div><span>' + pct + '%</span>') + '</td>' +
+    '<td class="last" data-l="ส่งล่าสุด">' + (sent ? st.last.slice(11) + ' น.<small>' + esc(st.by || '') + '</small>' : '<span class="muted">–</span>') + '</td>' +
+    '<td class="acts"><div>' +
+    '<button class="btn sm" data-act="view" data-no="' + c.no + '">' + (sent ? 'ดู/แก้ไข' : 'เพิ่มข้อมูล') + '</button>' +
+    (sent ? '<button class="btn sm" data-act="edit" data-no="' + c.no + '" title="ให้สิทธิ์ครูแก้ไขเพิ่ม 1 ครั้ง">+ สิทธิ์แก้</button>' +
       '<button class="btn sm danger" data-act="clear" data-no="' + c.no + '">ลบ</button>' : '') +
     (openUntil
       ? '<button class="btn sm danger" data-act="close" data-no="' + c.no + '">ยกเลิกเปิดพิเศษ</button>'
-      : '<button class="btn sm" data-act="open" data-no="' + c.no + '">เปิดส่งย้อนหลัง</button>') +
-    '</div></div>';
+      : '<button class="btn sm" data-act="open" data-no="' + c.no + '">เปิดย้อนหลัง</button>') +
+    '</div></td></tr>';
 }
 
 function clubAction(btn) {
@@ -194,7 +205,7 @@ async function openClub(no, week) {
   let opts = '';
   for (let i = 1; i <= A.club.weeks; i++) opts += '<option value="' + i + '"' + (i === week ? ' selected' : '') + '>สัปดาห์ที่ ' + i + ' · ' + thDate(A.club.sessions[i - 1]) + (i === A.club.weeks ? ' (ผล)' : '') + '</option>';
   $('#mcWeek').innerHTML = opts;
-  $('#mcTitle').textContent = A.club.club.icon + ' ' + A.club.club.name;
+  $('#mcTitle').textContent = Number(A.club.club.no) + '. ' + A.club.club.name;
   renderClubModal();
   openModal('#mClub');
 }
@@ -326,7 +337,7 @@ async function renderStudents(body) {
   const noClub = students.filter(s => !s.club && s.status !== 'ลาออก').length;
   body.innerHTML = '<div class="kpis"><div class="kpi"><b>' + (students.length - left) + '</b><span>นักเรียนที่เรียนอยู่</span></div>' +
     '<div class="kpi"><b>' + left + '</b><span>ลาออก</span></div><div class="kpi"><b>' + noClub + '</b><span>ไม่มีชุมนุม</span></div></div>' +
-    '<input class="input" id="stSearch" type="search" placeholder="🔎 ค้นหาชื่อ รหัส ชั้น หรือชุมนุม">' +
+    '<input class="input" id="stSearch" type="search" placeholder="ค้นหาชื่อ รหัส ชั้น หรือชุมนุม">' +
     '<div class="card tbl-wrap"><table class="tbl"><thead><tr><th>นักเรียน</th><th>ชุมนุม</th><th>สถานะ</th></tr></thead><tbody id="stBody"></tbody></table></div>';
   const draw = () => {
     const q = $('#stSearch').value.trim().toLowerCase();
@@ -365,7 +376,7 @@ async function renderReport(body) {
     const c = byClub[x.club] || (byClub[x.club] = { n: 0, pass: 0, fail: 0, pct: [] });
     c.n++; if (x.grade === 'ผ') c.pass++; if (x.grade === 'มผ') c.fail++; if (x.pct !== null) c.pct.push(x.pct);
   });
-  body.innerHTML = '<div class="card"><div class="row" style="justify-content:space-between"><b>⚠️ นักเรียนที่ขาด/ลาเกิน ' + r.warnPercent + '%</b>' +
+  body.innerHTML = '<div class="card"><div class="row" style="justify-content:space-between"><b>นักเรียนที่ขาด/ลาเกิน' + r.warnPercent + '%</b>' +
     '<button class="btn sm" id="btnCsv">ดาวน์โหลด CSV ทั้งหมด</button></div>' +
     (warn.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>นักเรียน</th><th>ชุมนุม</th><th>มา</th><th>ลา</th><th>ขาด</th><th>%มา</th></tr></thead><tbody>' +
       warn.map(x => '<tr><td>' + esc(x.name) + '<div class="muted small">' + esc(x.cls) + '</div></td><td>' + esc(x.club) + '</td><td>' + x.present + '</td><td>' + x.leave +
