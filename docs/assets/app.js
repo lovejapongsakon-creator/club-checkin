@@ -27,6 +27,10 @@ async function init() {
     S.info = await API.call('info');
     S.loadedAt = Date.now();
     renderHome();
+    // สแกน QR ของชุมนุม (?club=01) แล้วเปิดช่องใส่รหัสของชุมนุมนั้นทันที
+    const qc = new URLSearchParams(location.search).get('club');
+    const hit = qc && S.info.clubs.find(c => Number(c.no) === Number(qc));
+    if (hit) { store('lastClub', hit.no); renderClubs(); askCode(hit.no); }
     setInterval(renderStatus, 30000);
   } catch (err) {
     $('#clubGrid').innerHTML = '<div class="card empty">' + esc(err.message) +

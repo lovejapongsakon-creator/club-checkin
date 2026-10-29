@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR Code เช็คชื่อชุมนุม</title>
+  <link rel="icon" href="https://i.ibb.co/mVCtZ7mL/image.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; font-family: 'Sarabun', sans-serif; background: #f6f8ff; color: #1d2340; text-align: center; padding: 16px; }
+    canvas { width: 100%; max-width: 480px; height: auto; border-radius: 16px; box-shadow: 0 10px 30px rgba(47, 64, 140, .15); }
+    .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+    button { font: inherit; font-weight: 700; border: 0; border-radius: 12px; padding: 12px 18px; cursor: pointer; background: linear-gradient(120deg, #2f80ed, #7b6cf6, #ec4899); color: #fff; }
+    button.alt { background: #fff; color: #1d2340; border: 1px solid #e6e9f5; }
+    @media print { .row, p { display: none; } body { background: #fff; padding: 0; } canvas { box-shadow: none; max-width: 100%; } }
+  </style>
+</head>
+<body>
+  <canvas id="poster" width="1240" height="1754"></canvas>
+  <div class="row">
+    <button id="dlPoster">ดาวน์โหลดโปสเตอร์ (PNG)</button>
+    <button class="alt" id="dlQr">ดาวน์โหลดเฉพาะ QR</button>
+    <button class="alt" onclick="print()">พิมพ์ A4</button>
+  </div>
+  <p style="color:#6a7190;font-size:14px">โปสเตอร์ขนาด A4 · สแกนแล้วเข้าหน้าเช็คชื่อทันที</p>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  <script>
+    const URL_ = 'https://lovejapongsakon-creator.github.io/club-checkin/';
+    const LOGO = 'https://i.ibb.co/mVCtZ7mL/image.png';
+
+    function qrMatrix(text) {
+      const q = qrcode(0, 'H'); // ระดับแก้ผิด H เพื่อวางตราตรงกลางได้
+      q.addData(text);
+      q.make();
+      return q;
+    }
+
+    function rr(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    }
+
+    // วาด QR: จุดกลม ๆ ไล่สีฟ้า→ชมพู มุมทั้งสามเป็นกรอบมน
+    function drawQr(ctx, q, x, y, size, logo) {
+      const n = q.getModuleCount(), cell = size / n;
+      const g = ctx.createLinearGradient(x, y, x + size, y + size);
+      g.addColorStop(0, '#2f80ed'); g.addColorStop(.5, '#6a5af6'); g.addColorStop(1, '#ec4899');
+      const finder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+      const hole = logo ? Math.ceil(n * .24) : 0, h0 = Math.floor((n - hole) / 2);
+      ctx.fillStyle = g;
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        if (!q.isDark(r, c) || finder(r, c)) continue;
+        if (hole && r >= h0 && r < h0 + hole && c >= h0 && c < h0 + hole) continue;
+        // จุดขนาด 92% ของช่อง: ยังดูเป็นจุดมน แต่ชิดพอให้กล้องมือถืออ่านได้แน่นอน
+        rr(ctx, x + c * cell + cell * .04, y + r * cell + cell * .04, cell * .92, cell * .92, cell * .25);
+        ctx.fill();
+      }
+      [[0, 0], [0, n - 7], [n - 7, 0]].forEach(([r, c]) => {
+        const fx = x + c * cell, fy = y + r * cell;
+        ctx.fillStyle = g; rr(ctx, fx, fy, cell * 7, cell * 7, cell * 2); ctx.fill();
+        ctx.fillStyle = '#fff'; rr(ctx, fx + cell, fy + cell, cell * 5, cell * 5, cell * 1.4); ctx.fill();
+        ctx.fillStyle = g; rr(ctx, fx + cell * 2, fy + cell * 2, cell * 3, cell * 3, cell * .9); ctx.fill();
+      });
+      if (logo) {
+        const ls = hole * cell, lx = x + h0 * cell, ly = y + h0 * cell;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(lx + ls / 2, ly + ls / 2, ls / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(lx + ls / 2, ly + ls / 2, ls / 2 - cell * .6, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(logo, lx + cell * .6, ly + cell * .6, ls - cell * 1.2, ls - cell * 1.2); ctx.restore();
+      }
+    }
+
+    function loadLogo() {
+      return new Promise(res => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          // ทดสอบว่า canvas ยังส่งออกได้ (เว็บรูปอนุญาต CORS) ถ้าไม่ได้ก็ไม่ใส่ตรา
+          try { const t = document.createElement('canvas'); t.getContext('2d').drawImage(img, 0, 0, 1, 1); t.toDataURL(); res(img); }
+          catch (e) { res(null); }
+        };
+        img.onerror = () => res(null);
+        img.src = LOGO;
+      });
+    }
+
+    async function render() {
+      await document.fonts.load('700 60px Sarabun');
+      const logo = await loadLogo();
+      window.LOGO_OK = !!logo;
+      const cv = document.getElementById('poster'), ctx = cv.getContext('2d');
+      const W = cv.width, H = cv.height;
+
+      // พื้นหลังไล่สี + วงกลมพาสเทล
+      const bg = ctx.createLinearGradient(0, 0, W, H);
+      bg.addColorStop(0, '#e8f2ff'); bg.addColorStop(.55, '#fde8f3'); bg.addColorStop(1, '#fff5d1');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      [['#c6e2ff', 120, 160, 380], ['#ffd6ea', W - 80, H - 260, 420], ['#ffeaa0', W - 160, 260, 200]].forEach(([c, x, y, r]) => {
+        ctx.fillStyle = c; ctx.globalAlpha = .55; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+
+      // แถบหัว
+      const hg = ctx.createLinearGradient(0, 0, W, 0);
+      hg.addColorStop(0, '#2f80ed'); hg.addColorStop(.5, '#7b6cf6'); hg.addColorStop(1, '#ec4899');
+      ctx.fillStyle = hg; ctx.fillRect(0, 0, W, 300);
+      ctx.fillStyle = '#f5b700'; ctx.fillRect(0, 300, W, 12);
+
+      if (logo) {
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(W / 2, 300, 120, 0, Math.PI * 2); ctx.fill();
+        ctx.save(); ctx.beginPath(); ctx.arc(W / 2, 300, 108, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(logo, W / 2 - 108, 192, 216, 216); ctx.restore();
+      }
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 46px Sarabun'; ctx.fillText('โรงเรียนพระปริยัติธรรม วัดธรรมมงคล', W / 2, 110);
+      ctx.font = '400 34px Sarabun'; ctx.fillText('กิจกรรมพัฒนาผู้เรียน · ภาคเรียนที่ 2/2569', W / 2, 165);
+
+      ctx.fillStyle = '#1d2340';
+      ctx.font = '700 92px Sarabun'; ctx.fillText('ระบบเช็คชื่อชุมนุม', W / 2, 530);
+      ctx.fillStyle = '#6a7190';
+      ctx.font = '400 40px Sarabun'; ctx.fillText('สำหรับครูที่ปรึกษาและหัวหน้าชุมนุม', W / 2, 595);
+
+      // การ์ด QR
+      const qs = 760, qx = (W - qs) / 2, qy = 660;
+      ctx.save(); ctx.shadowColor = 'rgba(47,64,140,.18)'; ctx.shadowBlur = 50; ctx.shadowOffsetY = 18;
+      ctx.fillStyle = '#fff'; rr(ctx, qx - 50, qy - 50, qs + 100, qs + 100, 56); ctx.fill(); ctx.restore();
+      const q = qrMatrix(URL_);
+      drawQr(ctx, q, qx, qy, qs, logo);
+
+      // ป้ายสแกน
+      const py = qy + qs + 110;
+      ctx.fillStyle = hg; rr(ctx, W / 2 - 300, py, 600, 96, 48); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '700 46px Sarabun'; ctx.fillText('สแกนเพื่อเช็คชื่อ', W / 2, py + 64);
+
+      ctx.fillStyle = '#1d2340'; ctx.font = '700 36px Sarabun';
+      ctx.fillText('ทุกวันพฤหัสบดี เวลา 17.10 – 20.00 น.', W / 2, py + 175);
+      ctx.fillStyle = '#6a7190'; ctx.font = '400 30px Sarabun';
+      ctx.fillText(URL_.replace('https://', ''), W / 2, py + 230);
+
+      // QR อย่างเดียว (พื้นขาว) สำหรับปุ่มดาวน์โหลดแยก
+      const c2 = document.createElement('canvas'); c2.width = c2.height = 1000;
+      const x2 = c2.getContext('2d'); x2.fillStyle = '#fff'; x2.fillRect(0, 0, 1000, 1000);
+      drawQr(x2, q, 80, 80, 840, logo);
+      window.QR_ONLY = c2;
+      window.READY = true;
+    }
+
+    function download(canvas, name) {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = name;
+      a.click();
+    }
+    document.getElementById('dlPoster').onclick = () => download(document.getElementById('poster'), 'โปสเตอร์-QR-เช็คชื่อชุมนุม.png');
+    document.getElementById('dlQr').onclick = () => download(window.QR_ONLY, 'QR-เช็คชื่อชุมนุม.png');
+    render();
+  </script>
+</body>
+</html>
