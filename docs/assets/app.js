@@ -6,7 +6,16 @@ const S = {
   data: null,     // ข้อมูลจาก login
   marks: {},      // ค่าที่กำลังเลือก { id: '1' | 'ล' | '0' | 'ผ' | 'มผ' }
   mode: '',       // 'full' (ครบ) | 'part' (ไม่ครบ) | 'grade'
+  filter: 'all',
   loadedAt: 0,
+};
+
+const ICON = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+  go: '<svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
 };
 
 init();
@@ -43,7 +52,7 @@ function renderHome() {
   $('#helloSub').textContent = 'ภาคเรียนที่ ' + i.term + '/' + i.year + ' · เลือกชุมนุมของท่าน แล้วใส่รหัสเพื่อเช็คชื่อ';
   const ann = $('#announce');
   ann.hidden = !i.announce;
-  ann.textContent = i.announce ? '📢 ' + i.announce : '';
+  ann.textContent = i.announce || '';
   renderStatus();
   renderClubs();
 }
@@ -58,7 +67,7 @@ function remainText(win) {
   const [ch, cm] = win.close.split(':').map(Number);
   const left = ch * 60 + cm - serverMinutesNow(win);
   if (left <= 0) return 'ใกล้หมดเวลา';
-  return 'เหลือเวลา ' + (left >= 60 ? Math.floor(left / 60) + ' ชม. ' : '') + (left % 60) + ' นาที';
+  return 'เหลือ ' + (left >= 60 ? Math.floor(left / 60) + ' ชม. ' : '') + (left % 60) + ' นาที';
 }
 
 function renderStatus() {
@@ -70,14 +79,14 @@ function renderStatus() {
     const span = ch * 60 + cm - (oh * 60 + om);
     const pct = w.mode === 'เปิดตลอด' ? 100 : Math.max(0, Math.min(100, 100 - (serverMinutesNow(w) - oh * 60 - om) / span * 100));
     el.className = 'card status open';
-    el.innerHTML = '<span class="ico">🔔</span><div class="body"><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week + (w.week === S.info.weeks ? ' (ส่งผล ผ/มผ)' : '') +
-      '</b><div class="muted small">' + thDate(w.weekDate, true) + ' · ' + w.open + '–' + w.close + ' น. · ' +
+    el.innerHTML = '<span class="dot"></span><div class="body"><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week + (w.week === S.info.weeks ? ' (ส่งผล)' : '') +
+      '</b><div class="muted small">' + thDate(w.weekDate) + ' · ' + w.open + '–' + w.close + ' น. · ' +
       (w.mode === 'เปิดตลอด' ? 'แอดมินเปิดไว้ตลอด' : '<b style="font-size:inherit;color:var(--pink)">' + remainText(w) + '</b>') +
-      '</div><div class="timebar" title="เวลาที่เหลือ"><i style="width:' + pct + '%"></i></div></div>';
+      '</div><div class="timebar"><i style="width:' + pct + '%"></i></div></div>';
   } else {
     el.className = 'card status closed';
-    el.innerHTML = '<span class="ico">⏰</span><div class="body"><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
-      (w.next ? '<br>ครั้งถัดไป: <b style="font-size:inherit;color:var(--blue)">' + thDate(w.next, true) + ' เวลา ' + w.open + ' น.</b>' : '') + '</div></div>';
+    el.innerHTML = '<span class="dot"></span><div class="body"><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
+      (w.next ? '<br>ครั้งถัดไป <b style="font-size:inherit;color:var(--blue)">' + thDate(w.next, true) + ' ' + w.open + ' น.</b>' : '') + '</div></div>';
   }
 }
 
@@ -92,24 +101,24 @@ function renderClubs() {
   if (!list.length) { grid.innerHTML = '<div class="empty">ไม่พบชุมนุมที่ค้นหา</div>'; return; }
   grid.innerHTML = list.map((c, i) => '<button class="club c' + (Number(c.no) % 3) + (c.no === mine ? ' mine' : '') +
     '" style="animation-delay:' + Math.min(i, 12) * 30 + 'ms" data-no="' + c.no + '">' +
-    '<span class="ic">' + c.icon + '</span><span style="flex:1;min-width:0">' +
-    '<span class="no">ชุมนุมที่ ' + Number(c.no) + (c.no === mine ? ' · ชุมนุมของฉัน' : '') + '</span>' +
-    '<span class="nm" style="display:block">' + esc(c.name) + '</span>' +
-    '<span class="tc" style="display:block">' + esc(c.teachers.join(', ')) + '</span>' +
+    '<span class="mono">' + esc(initials(c.name)) + '</span><span class="txt">' +
+    '<span class="nm">' + Number(c.no) + '. ' + esc(c.name) + '</span>' +
+    '<span class="tc">' + esc(c.teachers.join(', ')) + '</span>' +
     '<span class="meta"><span class="chip gray">' + c.count + ' รูป</span>' +
-    (c.submitted ? '<span class="chip ok">✓ ส่งสัปดาห์นี้แล้ว</span>' : '') + '</span></span><span class="go">›</span></button>').join('');
+    (c.no === mine ? '<span class="chip pink">ชุมนุมของฉัน</span>' : '') +
+    (c.submitted ? '<span class="chip ok">ส่งแล้ว</span>' : '') + '</span></span>' + ICON.go + '</button>').join('');
   $$('.club', grid).forEach(b => b.addEventListener('click', () => askCode(b.dataset.no)));
 }
 
 function askCode(no) {
   S.club = S.info.clubs.find(c => c.no === no);
-  $('#mCodeIc').textContent = S.club.icon;
+  $('#mCodeIc').textContent = initials(S.club.name);
   $('#mCodeName').textContent = S.club.name;
   $('#mCodeTc').textContent = S.club.teachers.join(', ');
   $('#codeInput').value = '';
   $('#codeErr').textContent = '';
   openModal('#mCode');
-  setTimeout(() => $('#codeInput').focus(), 50);
+  setTimeout(() => $('#codeInput').focus(), 60);
 }
 
 async function onLogin(e) {
@@ -147,27 +156,30 @@ function goHome() {
 /* ============================ หน้าเช็คชื่อ ============================ */
 
 function draftKey() { return 'draft:' + S.data.club.no + ':' + S.data.active.week; }
+function canEdit() { const d = S.data; return !!(d && d.active && d.rights.canSubmit); }
+
+// ลำดับการแตะชื่อ: ครบ = มา ↔ ลา, ไม่ครบ = มา → ขาด → ลา → มา, ส่งผล = ผ ↔ มผ
+const CYCLE = { full: ['1', 'ล'], part: ['1', '0', 'ล'], grade: ['ผ', 'มผ'] };
 
 function showCheck(data) {
   S.data = data;
   S.marks = {};
   S.mode = '';
+  S.filter = 'all';
   const a = data.active;
-  if (a) {
-    const wk = a.week - 1;
-    const prev = {};
-    data.students.forEach(st => { const v = (data.marks[st.id] || [])[wk]; if (v) prev[st.id] = v; });
-    const draft = store(draftKey());
-    if (data.mode === 'grade') {
-      S.mode = 'grade';
-      S.marks = Object.assign({}, prev, draft && draft.marks);
-    } else if (draft && draft.mode) {
-      S.mode = draft.mode;
-      S.marks = draft.marks || {};
-    } else if (Object.keys(prev).length) {
-      S.marks = prev;
-      S.mode = Object.values(prev).includes('0') ? 'part' : 'full';
-    }
+  const wk = a ? a.week - 1 : -1;
+  const prev = {};
+  if (a) data.students.forEach(st => { const v = (data.marks[st.id] || [])[wk]; if (v) prev[st.id] = v; });
+  const draft = a && canEditData(data) ? store(draftKey()) : null;
+  if (a && data.mode === 'grade') {
+    S.mode = 'grade';
+    S.marks = Object.assign({}, prev, draft && draft.marks);
+  } else if (draft && draft.mode) {
+    S.mode = draft.mode;
+    S.marks = draft.marks || {};
+  } else if (Object.keys(prev).length) {
+    S.marks = prev;
+    S.mode = Object.values(prev).includes('0') ? 'part' : 'full';
   }
   $('#viewClubs').hidden = true;
   $('#viewCheck').hidden = false;
@@ -175,88 +187,80 @@ function showCheck(data) {
   window.scrollTo(0, 0);
 }
 
+function canEditData(d) { return !!(d.active && d.rights && d.rights.canSubmit); }
+
 function renderCheck() {
-  const d = S.data, c = d.club, a = d.active, r = d.rights;
+  const d = S.data, c = d.club, a = d.active;
+  const grade = S.mode === 'grade';
   const view = $('#viewCheck');
-  let html = '<div><button class="btn ghost sm" id="btnBack">← เลือกชุมนุมอื่น</button></div>' +
-    '<div class="card club-head"><div class="ic">' + c.icon + '</div><div style="flex:1;min-width:0"><h2>' + esc(c.name) + '</h2>' +
-    '<div class="muted small">' + esc(c.teachers.join(', ')) + (c.place ? ' · ' + esc(c.place) : '') + '</div>' +
-    '<div class="muted small">สมาชิก ' + d.students.length + ' รูป</div></div></div>';
+  const sub = a
+    ? thDate(d.sessions[a.week - 1], true) + (a.special ? ' · เปิดพิเศษถึง ' + thStamp(a.until) : '')
+    : c.teachers.join(', ');
+  let html = '<div class="ck-head"><button class="icon-btn" id="btnBack" aria-label="กลับ">' + ICON.back + '</button>' +
+    '<div class="ck-title"><b>' + esc(c.name) + '</b><span>' + esc(sub) + '</span></div>' +
+    (a ? '<div class="wk"><small>สัปดาห์</small><b>' + a.week + '</b></div>' : '') + '</div>';
 
   if (!a) {
-    html += '<div class="card"><b>ขณะนี้ยังไม่เปิดให้เช็คชื่อ</b><div class="muted">' + esc(d.window.reason) +
-      (d.window.next ? '<br>ครั้งถัดไป: ' + thDate(d.window.next, true) + ' เวลา ' + d.window.open + '–' + d.window.close + ' น.' : '') +
-      '</div><div class="muted small" style="margin-top:6px">ดูประวัติการเช็คชื่อย้อนหลังได้ด้านล่าง</div></div>';
+    html += noticeHtml(ICON.clock, '', 'ยังไม่เปิดให้เช็คชื่อ', esc(d.window.reason) +
+      (d.window.next ? '<br>ครั้งถัดไป ' + thDate(d.window.next, true) + ' ' + d.window.open + '–' + d.window.close + ' น.' : ''));
+  } else if (!d.rights.canSubmit) {
+    html += heroHtml() + noticeHtml(ICON.lock, 'pink', 'ส่งและแก้ไขครบแล้ว', 'หากต้องการแก้ไขอีก กรุณาติดต่อหัวหน้ากิจกรรมพัฒนาผู้เรียน');
   } else {
-    const grade = d.mode === 'grade';
-    const st = d.status[a.week];
-    html += '<div class="card stack"><div class="row" style="justify-content:space-between">' +
-      '<div><b style="font-size:19px">สัปดาห์ที่ ' + a.week + (grade ? ' · ส่งผลการเรียน' : '') + '</b>' +
-      '<div class="muted small">' + thDate(d.sessions[a.week - 1], true) +
-      (a.special ? ' · <span class="chip warn">เปิดส่งพิเศษถึง ' + thStamp(a.until) + '</span>' : '') + '</div></div>' +
-      rightsChip(r) + '</div>' +
-      (st ? '<div class="muted small">ส่งล่าสุด ' + thStamp(st.last) + (st.by ? ' โดย ' + esc(st.by) : '') + '</div>' : '') + '</div>';
-
-    if (!r.canSubmit) {
-      html += '<div class="card"><b>🔒 สัปดาห์นี้ส่งและแก้ไขครบแล้ว</b><div class="muted">หากต้องการแก้ไขอีก กรุณาติดต่อหัวหน้ากิจกรรมพัฒนาผู้เรียน</div></div>';
+    html += heroHtml();
+    if (grade) {
+      html += '<div class="quick"><button class="btn sm" id="btnAllPass">ผ ทุกรูป</button><button class="btn sm" id="btnByPct">ผ เฉพาะที่มาเรียน ≥ 80%</button></div>' +
+        '<div class="tip">แตะชื่อเพื่อสลับ <b>ผ</b> / <b>มผ</b></div>';
     } else {
-      html += '<div class="card"><label class="f" for="byName">ผู้เช็คชื่อ</label>' +
-        '<input class="input" id="byName" placeholder="เช่น อ.รุ่งทิวา หรือ หัวหน้าชุมนุม สามเณร…" value="' + esc(store('checkerName') || '') + '"></div>';
-      if (grade) {
-        html += '<div class="hint">สัปดาห์สุดท้าย: เลือกผลการเรียน <b>ผ</b> (ผ่าน) หรือ <b>มผ</b> (ไม่ผ่าน) ให้นักเรียนทุกรูป ' +
-          'ระบบแสดงร้อยละการมาเรียนไว้ช่วยประกอบการตัดสิน</div>' +
-          '<div class="row"><button class="btn sm" id="btnAllPass">ให้ ผ ทุกรูป</button><button class="btn sm" id="btnByPct">ผ เฉพาะรูปที่มาเรียน ≥ 80%</button></div>';
-      } else {
-        html += '<div class="mode-btns">' +
-          '<button class="mode-btn full' + (S.mode === 'full' ? ' on' : '') + '" data-mode="full"><span class="e">🎉</span><b>ครบ</b><span>มาเรียนครบทุกรูป (เลือกรูปที่ลาได้)</span></button>' +
-          '<button class="mode-btn part' + (S.mode === 'part' ? ' on' : '') + '" data-mode="part"><span class="e">🙋</span><b>ไม่ครบ</b><span>มีนักเรียนไม่เข้าเรียน</span></button></div>';
-        if (S.mode) {
-          html += '<div class="hint' + (S.mode === 'part' ? ' pink' : '') + '">' + (S.mode === 'full'
-            ? 'ทุกรูปถูกตั้งเป็น <b>มา</b> แล้ว หากมีรูปที่ลา ให้แตะ <b>ลา</b> ที่ชื่อรูปนั้น'
-            : 'แตะ <b>ขาด</b> ที่ชื่อนักเรียนที่ไม่เข้าเรียน หรือ <b>ลา</b> สำหรับรูปที่ลา') + '</div>';
-        }
-      }
-      if (grade || S.mode) {
-        html += '<div class="card">' + (d.students.length > 8
-          ? '<div class="list-tools"><input class="input" id="stFind" type="search" placeholder="🔎 ค้นหาชื่อ หรือชั้น" autocomplete="off"></div>' : '') +
-          '<ul class="slist" id="slist">' + listHtml() + '</ul></div>';
-      }
+      html += '<div class="switch' + (S.mode ? '' : ' attn') + '" id="switch" data-mode="' + S.mode + '"><span class="pill"></span>' +
+        '<button data-mode="full">ครบ<small>มาครบทุกรูป</small></button><button data-mode="part">ไม่ครบ<small>มีคนไม่มา</small></button></div>' +
+        '<div class="tip" id="tip">' + tipText() + '</div>';
     }
+    if (S.mode) html += filtersHtml() + '<ul class="slist" id="slist">' + listHtml() + '</ul>';
   }
 
-  html += '<details class="card" id="histBox"><summary>📋 ประวัติการเช็คชื่อทุกสัปดาห์</summary><div style="margin-top:10px">' + historyHtml() + '</div></details>';
+  html += '<details class="card" id="histBox"><summary>ประวัติการเช็คชื่อทุกสัปดาห์' + ICON.down + '</summary><div style="margin-top:.7em">' + historyHtml() + '</div></details>';
   view.innerHTML = html;
 
   $('#btnBack').addEventListener('click', () => history.back());
-  $$('.mode-btn', view).forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
-  const by = $('#byName');
-  if (by) by.addEventListener('change', () => store('checkerName', by.value.trim()));
-  if ($('#btnAllPass')) $('#btnAllPass').addEventListener('click', () => { d.students.forEach(s => { S.marks[s.id] = 'ผ'; }); refreshList(); });
+  $$('#switch button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  if ($('#btnAllPass')) $('#btnAllPass').addEventListener('click', () => { d.students.forEach(s => { S.marks[s.id] = 'ผ'; }); refresh(true); });
   if ($('#btnByPct')) $('#btnByPct').addEventListener('click', () => {
     d.students.forEach(s => { const p = attendance(s.id).pct; S.marks[s.id] = p === null || p >= 80 ? 'ผ' : 'มผ'; });
-    refreshList();
-  });
-  const find = $('#stFind');
-  if (find) find.addEventListener('input', () => {
-    const q = find.value.trim().toLowerCase();
-    $$('#slist .srow').forEach(li => { li.hidden = q && !li.dataset.q.includes(q); });
+    refresh(true);
   });
   bindList();
-  updateBar();
+  updateTotals();
 }
 
-const AV_COLORS = ['#2f80ed', '#ec4899', '#f5b700', '#56ccf2', '#a78bfa', '#f472b6'];
-
-function rightsChip(r) {
-  if (!r) return '';
-  if (!r.canSubmit) return '<span class="chip bad">ล็อกแล้ว</span>';
-  if (r.count === 0) return '<span class="chip warn">ยังไม่ส่ง</span>';
-  return '<span class="chip ok">ส่งแล้ว · แก้ได้อีก ' + r.editsLeft + ' ครั้ง</span>';
+function noticeHtml(icon, kind, title, body) {
+  return '<div class="card notice"><div class="big-ic ' + kind + '">' + icon + '</div><b>' + title + '</b><div class="muted small">' + body + '</div></div>';
 }
 
-function options() {
-  if (S.mode === 'grade') return ['ผ', 'มผ'];
-  return S.mode === 'full' ? ['1', 'ล'] : ['1', 'ล', '0'];
+function tipText() {
+  if (S.mode === 'full') return 'ทุกรูปถูกตั้งเป็น <b>มา</b> แล้ว · แตะชื่อรูปที่ <b>ลา</b>';
+  if (S.mode === 'part') return 'แตะชื่อเพื่อเปลี่ยน <b>มา → ขาด → ลา</b>';
+  return 'เลือก <b>ครบ</b> หรือ <b>ไม่ครบ</b> เพื่อเริ่มเช็คชื่อ';
+}
+
+function heroHtml() {
+  const r = S.data.rights;
+  const rights = r.count === 0 ? '<span class="chip warn">ยังไม่ส่ง</span>' : '<span class="chip ok">ส่งแล้ว · แก้ได้อีก ' + r.editsLeft + ' ครั้ง</span>';
+  const grade = S.mode === 'grade';
+  const rows = grade
+    ? [['ผ', 'ผ่าน', 'var(--blue)'], ['มผ', 'ไม่ผ่าน', 'var(--pink)']]
+    : [['1', 'มา', 'var(--blue)'], ['ล', 'ลา', 'var(--yellow)'], ['0', 'ขาด', 'var(--pink)']];
+  return '<div class="card hero"><div class="ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" stroke="var(--line)"/>' +
+    rows.map(x => '<circle class="seg-' + x[0] + '" cx="50" cy="50" r="42" stroke="' + x[2] + '" stroke-dasharray="0 264"/>').join('') +
+    '</svg><div class="c"><b id="ringNum">0</b><small id="ringLbl">' + (grade ? 'ผ่าน' : 'มาเรียน') + '</small></div></div>' +
+    '<div class="hero-side"><div class="legend">' + rows.map(x => '<span><i style="background:' + x[2] + '"></i>' + x[1] + '<b id="lg-' + x[0] + '">0</b></span>').join('') +
+    '</div><div class="rights">' + rights + '</div></div></div>';
+}
+
+function filtersHtml() {
+  const opts = S.mode === 'grade' ? [['all', 'ทั้งหมด'], ['ผ', 'ผ'], ['มผ', 'มผ']]
+    : [['all', 'ทั้งหมด'], ['1', 'มา'], ['ล', 'ลา'], ['0', 'ขาด']];
+  return '<div class="filters" id="filters">' + opts.map(o => '<button data-f="' + o[0] + '" class="' + (S.filter === o[0] ? 'on' : '') + '">' +
+    o[1] + ' <b data-fc="' + o[0] + '">0</b></button>').join('') + '</div>';
 }
 
 function attendance(id) {
@@ -267,88 +271,135 @@ function attendance(id) {
   return { p, l, a, held, pct: held ? Math.round(p / held * 100) : null };
 }
 
+const AV_COLORS = ['#2f80ed', '#ec4899', '#e0a800', '#56ccf2', '#7b6cf6', '#f472b6'];
+const AV_MARK = { 'ล': 'ล', '0': '✕', 'มผ': '✕' };
+
 function listHtml() {
-  const opts = options();
   return S.data.students.map((s, i) => {
     const v = S.marks[s.id] || '';
     let sub = esc(s.cls);
     if (S.mode === 'grade') {
       const at = attendance(s.id);
-      sub += ' · มา ' + at.p + '/' + at.held + (at.pct !== null ? ' (' + at.pct + '%)' : '');
-      if (at.pct !== null && at.pct < 80) sub += ' <span class="chip bad">ต่ำกว่า 80%</span>';
+      sub += ' · มา ' + at.p + '/' + at.held + (at.pct !== null ? ' (' + at.pct + '%)<span class="minibar' + (at.pct < 80 ? ' low' : '') + '"><i style="width:' + at.pct + '%"></i></span>' : '');
     }
-    return '<li class="srow is-' + v + '" data-id="' + esc(s.id) + '" data-q="' + esc((s.name + ' ' + s.cls).toLowerCase()) + '"><span class="n">' + (i + 1) + '</span>' +
-      '<span class="av" style="background:' + AV_COLORS[i % AV_COLORS.length] + '">' + esc(initials(s.name)) + '</span>' +
+    return '<li class="srow is-' + v + '" role="button" tabindex="0" data-id="' + esc(s.id) + '" style="animation-delay:' + Math.min(i, 15) * 18 + 'ms">' +
+      '<span class="av" style="background:' + AV_COLORS[i % AV_COLORS.length] + '">' + esc(AV_MARK[v] || initials(s.name)) + '</span>' +
       '<span class="who"><b>' + esc(s.name) + '</b><small>' + sub + '</small></span>' +
-      '<span class="seg">' + opts.map(o => '<button type="button" data-v="' + o + '" class="' + (v === o ? 'on' : '') + '">' + MARK_LABEL[o] + '</button>').join('') +
-      '</span></li>';
+      '<span class="st">' + MARK_LABEL[v] + '</span></li>';
   }).join('');
 }
 
 function bindList() {
+  $$('#filters button').forEach(b => b.addEventListener('click', () => {
+    S.filter = b.dataset.f;
+    $$('#filters button').forEach(x => x.classList.toggle('on', x === b));
+    applyFilter();
+  }));
   $$('#slist .srow').forEach(li => {
-    $$('.seg button', li).forEach(b => b.addEventListener('click', () => {
-      S.marks[li.dataset.id] = b.dataset.v;
-      li.className = 'srow is-' + b.dataset.v + ' flash';
-      $$('.seg button', li).forEach(x => x.classList.toggle('on', x === b));
+    const tap = () => {
+      const cyc = CYCLE[S.mode];
+      const cur = S.marks[li.dataset.id];
+      const v = cyc[(cyc.indexOf(cur) + 1) % cyc.length];
+      S.marks[li.dataset.id] = v;
+      paintRow(li, v);
       buzz();
       saveDraft();
-      updateBar();
-    }));
+      updateTotals();
+    };
+    li.addEventListener('click', tap);
+    li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(); } });
   });
+  applyFilter();
 }
 
-function refreshList() {
+function paintRow(li, v) {
+  const s = S.data.students.find(x => x.id === li.dataset.id);
+  li.className = 'srow is-' + v;
+  void li.offsetWidth;
+  li.classList.add('bump');
+  $('.av', li).textContent = AV_MARK[v] || initials(s.name);
+  $('.st', li).textContent = MARK_LABEL[v];
+}
+
+function applyFilter() {
+  $$('#slist .srow').forEach(li => { li.hidden = S.filter !== 'all' && (S.marks[li.dataset.id] || '') !== S.filter; });
+}
+
+function refresh(rerenderList) {
   const ul = $('#slist');
-  if (ul) { ul.innerHTML = listHtml(); bindList(); }
+  if (ul && rerenderList) { ul.innerHTML = listHtml(); bindList(); }
   saveDraft();
-  updateBar();
+  updateTotals();
 }
 
 function setMode(mode) {
+  if (mode === S.mode) return;
   if (mode === 'full') {
     // ครบ: ทุกรูปมา ยกเว้นรูปที่เลือกลาไว้แล้ว
     S.data.students.forEach(s => { S.marks[s.id] = S.marks[s.id] === 'ล' ? 'ล' : '1'; });
   } else {
     S.data.students.forEach(s => { if (!S.marks[s.id]) S.marks[s.id] = '1'; });
   }
+  const first = !S.mode;
   S.mode = mode;
+  S.filter = 'all';
+  buzz();
   saveDraft();
-  renderCheck();
-  const list = $('#slist');
-  if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (first) { renderCheck(); return; }
+  // สลับโหมดแบบไม่วาดใหม่ทั้งหน้า เพื่อให้แถบเลื่อนเคลื่อนไหวลื่น
+  $('#switch').dataset.mode = mode;
+  $('#tip').innerHTML = tipText();
+  $('#filters').outerHTML = filtersHtml();
+  $('#slist').innerHTML = listHtml();
+  bindList();
+  updateTotals();
 }
 
 function saveDraft() {
-  if (S.data && S.data.active) store(draftKey(), { mode: S.mode, marks: S.marks });
+  if (canEdit()) store(draftKey(), { mode: S.mode, marks: S.marks });
 }
 
 function tally() {
-  const t = { '1': 0, 'ล': 0, '0': 0, 'ผ': 0, 'มผ': 0, missing: 0 };
-  S.data.students.forEach(s => { const v = S.marks[s.id]; if (v && options().includes(v)) t[v]++; else t.missing++; });
+  const t = { '1': 0, 'ล': 0, '0': 0, 'ผ': 0, 'มผ': 0, '': 0, missing: 0 };
+  const opts = CYCLE[S.mode] || [];
+  S.data.students.forEach(s => { const v = S.marks[s.id]; if (v && opts.includes(v)) t[v]++; else t.missing++; });
+  t[''] = t.missing;
   return t;
 }
 
-function updateBar() {
+function updateTotals() {
   const d = S.data;
-  const show = d && d.active && d.rights.canSubmit && (S.mode === 'grade' || S.mode);
+  const show = canEdit() && !!S.mode;
   $('#bottomBar').hidden = !show;
+  if (!d.active) return;
+  const t = tally(), total = d.students.length || 1;
+  // วงแหวนสรุป
+  const C = 2 * Math.PI * 42;
+  let off = 0;
+  (S.mode === 'grade' ? ['ผ', 'มผ'] : ['1', 'ล', '0']).forEach(k => {
+    const el = $('.seg-' + k);
+    if (!el) return;
+    const len = t[k] / total * C;
+    el.setAttribute('stroke-dasharray', len + ' ' + (C - len));
+    el.setAttribute('stroke-dashoffset', -off);
+    off += len;
+    const lg = $('#lg-' + k);
+    if (lg) lg.textContent = t[k];
+  });
+  const main = S.mode === 'grade' ? t['ผ'] : t['1'];
+  if ($('#ringNum')) $('#ringNum').innerHTML = (S.mode ? main : '–') + '<span class="muted" style="font-size:.5em">/' + d.students.length + '</span>';
+  $$('[data-fc]').forEach(el => { el.textContent = el.dataset.fc === 'all' ? d.students.length : t[el.dataset.fc]; });
   if (!show) return;
-  const t = tally();
-  $('#tally').innerHTML = S.mode === 'grade'
-    ? '<span class="chip ok">ผ ' + t['ผ'] + '</span><span class="chip bad">มผ ' + t['มผ'] + '</span>'
-    : '<span class="chip ok">มา ' + t['1'] + '</span><span class="chip warn">ลา ' + t['ล'] + '</span><span class="chip bad">ขาด ' + t['0'] + '</span>';
-  if (t.missing) $('#tally').innerHTML += '<span class="chip gray">ยังไม่เลือก ' + t.missing + '</span>';
-  const total = d.students.length || 1;
   $('#progBar').style.width = ((total - t.missing) / total * 100) + '%';
   $('#btnReview').disabled = t.missing > 0;
+  $('#btnReviewText').textContent = t.missing ? 'ยังไม่ได้เลือกอีก ' + t.missing + ' รูป' : 'ตรวจสอบและส่ง';
 }
 
 function historyHtml() {
   const d = S.data;
   if (!d.students.length) return '<div class="empty">ยังไม่มีรายชื่อนักเรียน</div>';
   let h = '<div class="hist-wrap"><table class="hist"><thead><tr><th>ชื่อ</th>';
-  for (let w = 1; w <= d.weeks; w++) h += '<th title="' + thDate(d.sessions[w - 1]) + '">' + (w === d.weeks ? 'ผล' : 'ส.' + w) + '</th>';
+  for (let w = 1; w <= d.weeks; w++) h += '<th title="' + thDate(d.sessions[w - 1]) + '">' + (w === d.weeks ? 'ผล' : w) + '</th>';
   h += '</tr></thead><tbody>';
   d.students.forEach(s => {
     h += '<tr><td>' + esc(s.name) + '</td>';
@@ -356,59 +407,61 @@ function historyHtml() {
     for (let w = 0; w < d.weeks; w++) { const v = m[w] || ''; h += '<td class="m-' + v + '">' + MARK_LABEL[v] + '</td>'; }
     h += '</tr>';
   });
-  return h + '</tbody></table></div><div class="muted small" style="margin-top:6px">มา = มาเรียน · ลา = ลา · ขาด = ไม่เข้าเรียน · ผล = ผ/มผ</div>';
+  return h + '</tbody></table></div><div class="muted small" style="margin-top:.4em">ตัวเลขหัวตาราง = สัปดาห์ที่ · ผล = ผ/มผ</div>';
 }
 
 /* ============================ ยืนยันและส่ง ============================ */
 
 function openConfirm() {
   const d = S.data, t = tally(), grade = S.mode === 'grade';
-  const by = $('#byName') ? $('#byName').value.trim() : '';
-  if (!by) { toast('กรุณาใส่ชื่อผู้เช็คชื่อ', 'bad'); $('#byName').focus(); return; }
-  store('checkerName', by);
   $('#cfWhere').textContent = d.club.name + ' · สัปดาห์ที่ ' + d.active.week + ' · ' + thDate(d.sessions[d.active.week - 1], true);
   const n = k => '<b data-count="' + k + '">0</b>';
   $('#cfSum').innerHTML = grade
     ? '<div class="ok">' + n(t['ผ']) + 'ผ่าน (ผ)</div><div class="bad">' + n(t['มผ']) + 'ไม่ผ่าน (มผ)</div><div>' + n(d.students.length) + 'ทั้งหมด</div>'
     : '<div class="ok">' + n(t['1']) + 'มา</div><div class="warn">' + n(t['ล']) + 'ลา</div><div class="bad">' + n(t['0']) + 'ขาด</div>';
   countUp($('#cfSum'));
-  const names = v => d.students.filter(s => S.marks[s.id] === v).map(s => esc(s.name) + ' (' + esc(s.cls) + ')');
+  const names = v => d.students.filter(s => S.marks[s.id] === v).map(s => esc(s.name) + ' <span class="muted">' + esc(s.cls) + '</span>');
   let nh = '';
   if (grade) {
     const f = names('มผ');
-    nh = f.length ? '<div class="namebox"><b>ไม่ผ่าน (มผ):</b><br>' + f.join('<br>') + '</div>' : '';
+    if (f.length) nh = '<div class="namebox"><b>ไม่ผ่าน (มผ)</b><br>' + f.join('<br>') + '</div>';
   } else {
     const l = names('ล'), a = names('0');
-    if (l.length) nh += '<div class="namebox"><b>ลา ' + l.length + ' รูป:</b><br>' + l.join('<br>') + '</div>';
-    if (a.length) nh += '<div class="namebox" style="margin-top:8px"><b>ขาด ' + a.length + ' รูป:</b><br>' + a.join('<br>') + '</div>';
+    if (l.length) nh += '<div class="namebox"><b>ลา ' + l.length + ' รูป</b><br>' + l.join('<br>') + '</div>';
+    if (a.length) nh += '<div class="namebox"><b>ขาด ' + a.length + ' รูป</b><br>' + a.join('<br>') + '</div>';
   }
   $('#cfNames').innerHTML = nh;
   const r = d.rights;
   $('#cfRights').innerHTML = r.count === 0
     ? 'หลังส่งแล้ว แก้ไขได้อีก <b>1 ครั้ง</b> ภายในช่วงเวลาที่เปิด'
     : r.editsLeft <= 1
-      ? 'นี่คือการ<b>แก้ไขครั้งสุดท้าย</b> หลังส่งแล้วจะแก้ไม่ได้อีก กรุณาตรวจให้ถูกต้อง'
+      ? 'นี่คือการ<b>แก้ไขครั้งสุดท้าย</b> หลังส่งแล้วจะแก้ไม่ได้อีก'
       : 'นี่คือการ<b>แก้ไข</b> หลังส่งแล้วจะเหลือสิทธิ์แก้ไขอีก <b>' + (r.editsLeft - 1) + ' ครั้ง</b>';
+  $('#cfBy').value = store('checkerName') || '';
   $('#cfCode').value = '';
   $('#cfErr').textContent = '';
   openModal('#mConfirm');
-  setTimeout(() => $('#cfCode').focus(), 50);
+  setTimeout(() => ($('#cfBy').value ? $('#cfCode') : $('#cfBy')).focus(), 60);
 }
 
 async function onSend(e) {
   e.preventDefault();
+  const by = $('#cfBy').value.trim();
   const code = $('#cfCode').value.trim();
+  if (!by) { $('#cfErr').textContent = 'กรุณาใส่ชื่อผู้เช็คชื่อ'; shake($('#cfBy')); return; }
   if (code !== S.code) { $('#cfErr').textContent = 'รหัสไม่ตรงกับที่ใช้เข้าสู่ระบบ'; shake($('#cfCode')); return; }
+  store('checkerName', by);
   const btn = $('#btnSend');
   busy(btn, true, 'กำลังส่ง…');
   try {
     const marks = {};
     S.data.students.forEach(s => { marks[s.id] = S.marks[s.id]; });
     const week = S.data.active.week;
-    const data = await API.call('submit', { no: S.data.club.no, code, week, marks, by: store('checkerName') || '' });
+    const t = tally(), grade = S.mode === 'grade';
+    const data = await API.call('submit', { no: S.data.club.no, code, week, marks, by });
     store(draftKey(), null);
     closeModal('#mConfirm');
-    showDone(data, week);
+    showDone(data, week, t, grade);
   } catch (err) {
     $('#cfErr').textContent = err.message;
     shake($('#cfCode'));
@@ -417,19 +470,23 @@ async function onSend(e) {
   }
 }
 
-function showDone(data, week) {
-  const t = tally(), grade = S.mode === 'grade';
+function showDone(data, week, t, grade) {
   S.data = data;
   $('#bottomBar').hidden = true;
   const n = k => '<b data-count="' + k + '">0</b>';
-  $('#viewCheck').innerHTML = '<div class="card done stack"><div class="big">' + (grade || t['0'] ? '✅' : '🏆') + '</div><h2>ส่งเรียบร้อยแล้ว</h2><div class="muted">ขอบคุณที่ช่วยเช็คชื่อ 💙</div>' +
-    '<div class="muted">' + esc(data.club.name) + ' · สัปดาห์ที่ ' + week + '</div>' +
+  const perfect = !grade && !t['0'] && !t['ล'];
+  const r = data.rights;
+  $('#viewCheck').innerHTML = '<div class="card done stack">' +
+    '<svg class="check-anim" viewBox="0 0 100 100"><defs><linearGradient id="gradCk" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#2f80ed"/><stop offset=".55" stop-color="#7b6cf6"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs>' +
+    '<circle cx="50" cy="50" r="45"/><path d="M30 52l13 13 27-29"/></svg>' +
+    '<div><h2>ส่งเรียบร้อยแล้ว</h2><div class="muted">' + esc(data.club.name) + ' · สัปดาห์ที่ ' + week + '</div></div>' +
     '<div class="sum-grid">' + (grade
       ? '<div class="ok">' + n(t['ผ']) + 'ผ</div><div class="bad">' + n(t['มผ']) + 'มผ</div><div>' + n(data.students.length) + 'ทั้งหมด</div>'
       : '<div class="ok">' + n(t['1']) + 'มา</div><div class="warn">' + n(t['ล']) + 'ลา</div><div class="bad">' + n(t['0']) + 'ขาด</div>') + '</div>' +
-    (!grade && !t['0'] && !t['ล'] ? '<div><span class="chip pink">✨ มาครบทุกรูป เยี่ยมมาก!</span></div>' : '') +
-    '<div>' + rightsChip(data.rights) + '</div>' +
-    '<div class="row" style="justify-content:center"><button class="btn" id="btnView">ดูรายการที่ส่ง</button>' +
+    (perfect ? '<div><span class="chip pink">มาครบทุกรูป เยี่ยมมาก!</span></div>' : '') +
+    '<div class="muted small">' + (r && r.canSubmit ? 'แก้ไขได้อีก ' + r.editsLeft + ' ครั้ง ภายในเวลาที่เปิด' : 'สัปดาห์นี้ล็อกแล้ว') + '</div>' +
+    '<div class="row" style="justify-content:center;flex-wrap:nowrap"><button class="btn" id="btnView">ดูรายการที่ส่ง</button>' +
     '<button class="btn primary" id="btnHome">กลับหน้าแรก</button></div></div>';
   $('#btnHome').addEventListener('click', () => history.back());
   $('#btnView').addEventListener('click', () => showCheck(data));

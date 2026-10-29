@@ -17,6 +17,13 @@ const A = {
   $$('#tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
   $('#mcWeek').addEventListener('change', renderClubModal);
   $('#mcSave').addEventListener('click', saveClubMarks);
+  $('#mcClear').addEventListener('click', () => {
+    const w = Number($('#mcWeek').value);
+    clearWeek(A.club.club.no, w, A.club.club.name, $('#mcClear'), async () => {
+      A.club = await call('adminClub', { no: A.club.club.no });
+      renderClubModal();
+    });
+  });
   $('#mcAll').addEventListener('click', () => {
     const v = Number($('#mcWeek').value) === A.club.weeks ? 'ผ' : '1';
     A.club.students.forEach(s => { A.clubMarks[s.id] = v; });
@@ -141,8 +148,9 @@ function clubRowHtml(c) {
     (st && st.extra ? ' <span class="chip gray">แก้เพิ่ม +' + st.extra + '</span>' : '') +
     '<div class="muted small">' + esc(c.teachers.join(', ')) + ' · ' + c.count + ' รูป</div>' +
     (line ? '<div class="small">' + line + '</div>' : '') + '</div>' +
-    '<div class="acts"><button class="btn sm" data-act="view" data-no="' + c.no + '">ดู/แก้ไข</button>' +
-    (st && st.count ? '<button class="btn sm" data-act="edit" data-no="' + c.no + '">+ สิทธิ์แก้ไข</button>' : '') +
+    '<div class="acts"><button class="btn sm" data-act="view" data-no="' + c.no + '">' + (st && st.count ? 'ดู/แก้ไข' : 'เพิ่มข้อมูล') + '</button>' +
+    (st && st.count ? '<button class="btn sm" data-act="edit" data-no="' + c.no + '">+ สิทธิ์แก้ไข</button>' +
+      '<button class="btn sm danger" data-act="clear" data-no="' + c.no + '">ลบ</button>' : '') +
     (openUntil
       ? '<button class="btn sm danger" data-act="close" data-no="' + c.no + '">ยกเลิกเปิดพิเศษ</button>'
       : '<button class="btn sm" data-act="open" data-no="' + c.no + '">เปิดส่งย้อนหลัง</button>') +
@@ -153,6 +161,7 @@ function clubAction(btn) {
   const no = btn.dataset.no, kind = btn.dataset.act, week = A.dash.week;
   const club = A.dash.clubs.find(c => c.no === no);
   if (kind === 'view') return openClub(no, week);
+  if (kind === 'clear') return clearWeek(no, week, club.name, btn);
   if (kind === 'open') {
     const h = prompt('เปิดให้ "' + club.name + '" ส่งสัปดาห์ที่ ' + week + ' นอกเวลาได้กี่ชั่วโมง?', '24');
     if (!h) return;
@@ -161,6 +170,19 @@ function clubAction(btn) {
   const msg = kind === 'edit' ? 'ให้สิทธิ์แก้ไขเพิ่ม 1 ครั้ง' : 'ยกเลิกการเปิดส่งพิเศษ';
   if (!confirm(msg + '\n' + club.name + ' · สัปดาห์ที่ ' + week + ' ?')) return;
   act(btn, async () => { A.dash = await call('adminGrant', { no, week, kind }); render(); }, 'เรียบร้อย');
+}
+
+/** ลบข้อมูลที่ส่งมาของสัปดาห์ (no = 'all' ลบทุกชุมนุม) ครูจะส่งใหม่ได้เหมือนยังไม่เคยส่ง */
+function clearWeek(no, week, label, btn, after) {
+  const msg = 'ลบข้อมูลเช็คชื่อสัปดาห์ที่ ' + week + ' ของ "' + label + '" ?\n\n' +
+    '• ค่าในชีตสรุปของสัปดาห์นี้จะถูกล้าง\n• ครูส่งใหม่ได้เหมือนยังไม่เคยส่ง\n• การลบถูกบันทึกในประวัติ';
+  if (!confirm(msg)) return;
+  if (no === 'all' && prompt('พิมพ์คำว่า ลบ เพื่อยืนยันการลบทุกชุมนุม') !== 'ลบ') { toast('ยกเลิกแล้ว'); return; }
+  act(btn, async () => {
+    A.dash = await call('adminClearWeek', { no, week });
+    if (after) await after();
+    render();
+  }, 'ลบข้อมูลแล้ว');
 }
 
 /* ============================ ดู/แก้ข้อมูลชุมนุม ============================ */
@@ -189,15 +211,17 @@ function renderClubList() {
   const w = Number($('#mcWeek').value);
   const opts = w === A.club.weeks ? ['ผ', 'มผ'] : ['1', 'ล', '0'];
   const ul = $('#mcList');
+  const st = A.club.status[w];
+  $('#mcState').textContent = st && st.count ? 'ส่งแล้ว ' + st.count + ' ครั้ง · ' + thStamp(st.last) + (st.by ? ' · ' + st.by : '') : 'ยังไม่มีข้อมูล';
+  $('#mcClear').disabled = !(st && st.count) && !Object.keys(A.clubMarks).length;
   ul.innerHTML = A.club.students.length ? A.club.students.map((s, i) => {
     const v = A.clubMarks[s.id] || '';
-    return '<li class="srow is-' + v + '" data-id="' + esc(s.id) + '"><span class="n">' + (i + 1) + '</span><span class="who"><b>' + esc(s.name) +
+    return '<div class="arow" data-id="' + esc(s.id) + '"><span class="who"><b>' + (i + 1) + '. ' + esc(s.name) +
       '</b><small>' + esc(s.cls) + '</small></span><span class="seg">' +
-      opts.map(o => '<button type="button" data-v="' + o + '" class="' + (v === o ? 'on' : '') + '">' + MARK_LABEL[o] + '</button>').join('') + '</span></li>';
+      opts.map(o => '<button type="button" data-v="' + o + '" class="' + (v === o ? 'on' : '') + '">' + MARK_LABEL[o] + '</button>').join('') + '</span></div>';
   }).join('') : '<div class="empty">ไม่มีนักเรียน</div>';
-  $$('.srow', ul).forEach(li => $$('.seg button', li).forEach(b => b.addEventListener('click', () => {
+  $$('.arow', ul).forEach(li => $$('.seg button', li).forEach(b => b.addEventListener('click', () => {
     A.clubMarks[li.dataset.id] = b.dataset.v;
-    li.className = 'srow is-' + b.dataset.v;
     $$('.seg button', li).forEach(x => x.classList.toggle('on', x === b));
   })));
 }
@@ -372,12 +396,17 @@ function renderTools(body) {
     '<div class="row"><a class="btn" href="' + esc(d.sheetUrl) + '" target="_blank" rel="noopener">เปิด Google Sheet</a>' +
     '<button class="btn" id="btnRebuild">สร้างตารางสรุปใหม่</button></div>' +
     '<div class="muted small">ใช้หลังเพิ่ม/แก้รายชื่อนักเรียนในชีตโดยตรง ข้อมูลเช็คชื่อเดิมจะยังอยู่ครบ (จับคู่ด้วยรหัสประจำตัว)</div></div>' +
+    '<div class="card stack danger-zone"><b>ล้างข้อมูลทดสอบ</b><div class="muted small">ลบผลเช็คชื่อของสัปดาห์ที่เลือก <b>ทุกชุมนุม</b> และคืนสิทธิ์ส่งให้ครูทุกคน ใช้หลังทดลองระบบ</div>' +
+    '<div class="row"><select class="input" id="clrWeek" style="flex:1;min-width:12em">' +
+    d.sessions.map((s, i) => '<option value="' + (i + 1) + '"' + (i + 1 === d.week ? ' selected' : '') + '>สัปดาห์ที่ ' + (i + 1) + ' · ' + thDate(s) + '</option>').join('') +
+    '</select><button class="btn danger" id="btnClrAll">ลบทั้งสัปดาห์</button></div></div>' +
     '<form class="card stack" id="formPw"><b>เปลี่ยนรหัสแอดมิน</b>' +
     '<input class="input" type="password" id="newPw" placeholder="รหัสใหม่ (อย่างน้อย 6 ตัวอักษร)" autocomplete="new-password" required minlength="6">' +
     '<input class="input" type="password" id="newPw2" placeholder="ยืนยันรหัสใหม่" autocomplete="new-password" required>' +
     '<button class="btn primary" id="btnPw">เปลี่ยนรหัส</button></form>' +
     '<div class="card"><button class="btn danger" id="btnLogout">ออกจากระบบ</button></div>';
   $('#btnRebuild').addEventListener('click', e => act(e.currentTarget, async () => { A.dash = await call('adminRebuild', { week: d.week }); }, 'สร้างตารางสรุปใหม่แล้ว'));
+  $('#btnClrAll').addEventListener('click', e => clearWeek('all', Number($('#clrWeek').value), 'ทุกชุมนุม', e.currentTarget));
   $('#formPw').addEventListener('submit', e => {
     e.preventDefault();
     const p1 = $('#newPw').value, p2 = $('#newPw2').value;

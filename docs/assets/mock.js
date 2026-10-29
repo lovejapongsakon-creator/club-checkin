@@ -187,6 +187,16 @@ const MockAPI = (() => {
       setStatus(c, w, Object.assign({ count: Math.max(1, st ? st.count : 0), last: now().stamp, by: st && st.by ? st.by : 'แอดมิน' }, t));
       return H.adminClub(p);
     },
+    adminClearWeek(p) {
+      checkAdmin(p.pw);
+      const w = Number(p.week);
+      const clubs = p.no === 'all' ? db.clubs : [findClub(p.no)];
+      clubs.forEach(c => {
+        db.students.filter(s => s.club === c.name).forEach(s => { marksOf(s.id)[w - 1] = ''; });
+        delete db.status[c.no + '|' + w];
+      });
+      return dashboard(w);
+    },
     adminStudents: p => { checkAdmin(p.pw); return { students: db.students.map(s => Object.assign({}, s)), clubs: db.clubs.map(c => c.name) }; },
     adminSetStudent(p) {
       checkAdmin(p.pw);

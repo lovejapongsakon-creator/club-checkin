@@ -16,11 +16,10 @@
   <header class="topbar">
     <div class="wrap">
       <img class="logo" src="https://i.ibb.co/mVCtZ7mL/image.png" alt="ตราโรงเรียน" width="52" height="52">
-      <h1>หลังบ้าน · ผู้ดูแลระบบ<small>หัวหน้ากิจกรรมพัฒนาผู้เรียน</small></h1>
-      <span class="sp"></span>
+      <div class="brand"><h1>หลังบ้าน · ผู้ดูแลระบบ</h1><small>หัวหน้ากิจกรรมพัฒนาผู้เรียน</small></div>
       <div class="top-acts">
         <button type="button" id="btnFont" title="ปรับขนาดตัวอักษร" aria-label="ปรับขนาดตัวอักษร">ก+</button>
-        <a href="index.html" title="หน้าเช็คชื่อ"><span class="ico-sm">📋</span><span class="lbl">หน้าเช็คชื่อ</span></a>
+        <a href="index.html" title="หน้าเช็คชื่อ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg><span class="lbl">หน้าเช็คชื่อ</span></a>
       </div>
     </div>
   </header>
@@ -53,12 +52,15 @@
   <!-- ดู/แก้ข้อมูลชุมนุม -->
   <div class="modal" id="mClub" hidden>
     <div class="box stack" style="max-width:760px">
-      <div class="row" style="justify-content:space-between"><h3 id="mcTitle"></h3><button class="btn ghost sm" data-close="#mClub">ปิด</button></div>
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><h3 class="one-line" id="mcTitle"></h3><button class="btn ghost sm" data-close="#mClub">ปิด</button></div>
       <div class="row"><label class="f" for="mcWeek" style="margin:0">สัปดาห์</label><select class="input" id="mcWeek" style="width:auto;min-height:40px"></select></div>
-      <div class="hint small">แอดมินแก้ไขได้ทุกเวลา ไม่นับเป็นสิทธิ์แก้ไขของครู และบันทึกลงประวัติทุกครั้ง</div>
-      <div class="row"><button class="btn sm" id="mcAll">ตั้งทุกรูปเป็น มา / ผ</button></div>
-      <ul class="slist" id="mcList"></ul>
-      <button class="btn primary block" id="mcSave">บันทึกสัปดาห์นี้</button>
+      <div class="muted small">แอดมินเพิ่มหรือแก้ข้อมูลแทนครูได้ทุกเวลา ไม่นับเป็นสิทธิ์แก้ไขของครู และบันทึกลงประวัติทุกครั้ง</div>
+      <div class="row"><button class="btn sm" id="mcAll">ตั้งทุกรูปเป็น มา / ผ</button><span class="muted small" id="mcState"></span></div>
+      <div id="mcList"></div>
+      <div class="row" style="flex-wrap:nowrap">
+        <button class="btn danger" id="mcClear">ลบข้อมูลสัปดาห์นี้</button>
+        <button class="btn primary" style="flex:1" id="mcSave">บันทึก</button>
+      </div>
       <details><summary>ประวัติทุกสัปดาห์</summary><div id="mcHist" style="margin-top:8px"></div></details>
     </div>
   </div>
