@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <title>เช็คชื่อชุมนุม</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>ระบบเช็คชื่อชุมนุม<small id="school">กำลังโหลด…</small></h1>
+      <span class="sp"></span>
+      <a href="admin.html">ผู้ดูแล</a>
+    </div>
+  </header>
+  <div class="demo-bar" id="demoBar" hidden>โหมดทดลอง: ใช้ข้อมูลจำลอง ไม่บันทึกลงชีตจริง (รหัสชุมนุมที่ 1 คือ 0122569)</div>
+
+  <main class="wrap">
+    <!-- หน้าแรก: เลือกชุมนุม -->
+    <section id="viewClubs" class="stack">
+      <div class="card status" id="statusCard"><span class="dot"></span><div><b>กำลังตรวจสอบเวลา…</b></div></div>
+      <div class="announce" id="announce" hidden></div>
+      <input class="input" id="search" type="search" placeholder="🔎 ค้นหาชุมนุม หรือชื่อครูที่ปรึกษา" autocomplete="off">
+      <div class="club-grid" id="clubGrid">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
+    </section>
+
+    <!-- หน้าเช็คชื่อ -->
+    <section id="viewCheck" class="stack" hidden></section>
+  </main>
+
+  <div class="bottom-bar" id="bottomBar" hidden>
+    <div class="wrap">
+      <div class="tally" id="tally"></div>
+      <button class="btn primary" id="btnReview">ตรวจสอบและส่ง</button>
+    </div>
+  </div>
+
+  <!-- ใส่รหัสชุมนุม -->
+  <div class="modal" id="mCode" hidden>
+    <form class="box stack" id="formCode" autocomplete="off">
+      <div class="club-head"><div class="ic" id="mCodeIc"></div><div><h3 id="mCodeName"></h3><div class="muted small" id="mCodeTc"></div></div></div>
+      <div>
+        <label class="f" for="codeInput">รหัสเข้าเช็คชื่อ</label>
+        <input class="input code-input" id="codeInput" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="•••••••" required>
+        <div class="muted small">รหัส 7 หลักที่ได้รับจากหัวหน้ากิจกรรมพัฒนาผู้เรียน</div>
+      </div>
+      <div class="err" id="codeErr"></div>
+      <div class="row">
+        <button type="button" class="btn ghost" data-close="#mCode">ยกเลิก</button>
+        <button type="submit" class="btn primary" style="flex:1" id="btnLogin">เข้าสู่หน้าเช็คชื่อ</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ตรวจสอบก่อนส่ง -->
+  <div class="modal" id="mConfirm" hidden>
+    <form class="box stack" id="formConfirm" autocomplete="off">
+      <div>
+        <h3>ตรวจสอบก่อนส่ง</h3>
+        <div class="muted small" id="cfWhere"></div>
+      </div>
+      <div class="sum-grid" id="cfSum"></div>
+      <div id="cfNames"></div>
+      <div class="hint" id="cfRights"></div>
+      <div>
+        <label class="f" for="cfCode">ยืนยันสิทธิ์: ใส่รหัสชุมนุมอีกครั้ง</label>
+        <input class="input code-input" id="cfCode" inputmode="numeric" pattern="[0-9]*" maxlength="10" placeholder="•••••••" required>
+      </div>
+      <div class="err" id="cfErr"></div>
+      <div class="row">
+        <button type="button" class="btn ghost" data-close="#mConfirm">กลับไปแก้</button>
+        <button type="submit" class="btn primary" style="flex:1" id="btnSend">ยืนยันและส่ง</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

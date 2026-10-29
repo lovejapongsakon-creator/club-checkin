@@ -1,0 +1,10 @@
+{
+  "name": "ระบบเช็คชื่อชุมนุม",
+  "short_name": "เช็คชื่อชุมนุม",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#0f766e",
+  "lang": "th",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

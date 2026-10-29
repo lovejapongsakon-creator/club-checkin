@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="robots" content="noindex">
+  <title>หลังบ้านเช็คชื่อชุมนุม</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <h1>หลังบ้าน · ผู้ดูแลระบบ<small>หัวหน้ากิจกรรมพัฒนาผู้เรียน</small></h1>
+      <span class="sp"></span>
+      <a href="index.html">หน้าเช็คชื่อ</a>
+    </div>
+  </header>
+  <div class="demo-bar" id="demoBar" hidden>โหมดทดลอง: ใช้ข้อมูลจำลอง (รหัสแอดมิน admin2569)</div>
+
+  <main class="wrap">
+    <section id="viewLogin" class="card stack" style="max-width:420px;margin:24px auto">
+      <h2>เข้าสู่ระบบผู้ดูแล</h2>
+      <form id="formLogin" class="stack">
+        <input class="input" id="pw" type="password" placeholder="รหัสแอดมิน" autocomplete="current-password" required>
+        <div class="err" id="loginErr"></div>
+        <button class="btn primary block" id="btnLogin">เข้าสู่ระบบ</button>
+      </form>
+    </section>
+
+    <section id="viewAdmin" class="stack" hidden>
+      <nav class="tabs" id="tabs">
+        <button data-tab="overview" class="on">ภาพรวม</button>
+        <button data-tab="settings">ตั้งค่า</button>
+        <button data-tab="codes">รหัสชุมนุม</button>
+        <button data-tab="students">นักเรียน</button>
+        <button data-tab="report">รายงาน</button>
+        <button data-tab="tools">เครื่องมือ</button>
+      </nav>
+      <div id="tabBody" class="stack"></div>
+    </section>
+  </main>
+
+  <!-- ดู/แก้ข้อมูลชุมนุม -->
+  <div class="modal" id="mClub" hidden>
+    <div class="box stack" style="max-width:760px">
+      <div class="row" style="justify-content:space-between"><h3 id="mcTitle"></h3><button class="btn ghost sm" data-close="#mClub">ปิด</button></div>
+      <div class="row"><label class="f" for="mcWeek" style="margin:0">สัปดาห์</label><select class="input" id="mcWeek" style="width:auto;min-height:40px"></select></div>
+      <div class="hint small">แอดมินแก้ไขได้ทุกเวลา ไม่นับเป็นสิทธิ์แก้ไขของครู และบันทึกลงประวัติทุกครั้ง</div>
+      <div class="row"><button class="btn sm" id="mcAll">ตั้งทุกรูปเป็น มา / ผ</button></div>
+      <ul class="slist" id="mcList"></ul>
+      <button class="btn primary block" id="mcSave">บันทึกสัปดาห์นี้</button>
+      <details><summary>ประวัติทุกสัปดาห์</summary><div id="mcHist" style="margin-top:8px"></div></details>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>
