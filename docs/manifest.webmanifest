@@ -3,8 +3,11 @@
   "short_name": "เช็คชื่อชุมนุม",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f4f7f6",
-  "theme_color": "#0f766e",
+  "background_color": "#f7f9ff",
+  "theme_color": "#2f80ed",
   "lang": "th",
-  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [
+    { "src": "https://i.ibb.co/mVCtZ7mL/image.png", "sizes": "354x362", "type": "image/png" },
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
 }

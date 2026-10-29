@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f766e">
+  <meta name="theme-color" content="#2f80ed">
   <title>เช็คชื่อชุมนุม</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="https://i.ibb.co/mVCtZ7mL/image.png" type="image/png">
+  <link rel="apple-touch-icon" href="https://i.ibb.co/mVCtZ7mL/image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,9 +16,13 @@
 <body>
   <header class="topbar">
     <div class="wrap">
+      <img class="logo" src="https://i.ibb.co/mVCtZ7mL/image.png" alt="ตราโรงเรียน" width="52" height="52">
       <h1>ระบบเช็คชื่อชุมนุม<small id="school">กำลังโหลด…</small></h1>
       <span class="sp"></span>
-      <a href="admin.html">ผู้ดูแล</a>
+      <div class="top-acts">
+        <button type="button" id="btnFont" title="ปรับขนาดตัวอักษร" aria-label="ปรับขนาดตัวอักษร">ก+</button>
+        <a href="admin.html" title="ผู้ดูแลระบบ"><span class="ico-sm">⚙️</span><span class="lbl">ผู้ดูแล</span></a>
+      </div>
     </div>
   </header>
   <div class="demo-bar" id="demoBar" hidden>โหมดทดลอง: ใช้ข้อมูลจำลอง ไม่บันทึกลงชีตจริง (รหัสชุมนุมที่ 1 คือ 0122569)</div>
@@ -25,6 +30,7 @@
   <main class="wrap">
     <!-- หน้าแรก: เลือกชุมนุม -->
     <section id="viewClubs" class="stack">
+      <div class="hello"><span class="wave">👋</span><div><h2 id="helloText">สวัสดี คุณครู</h2><p id="helloSub">เลือกชุมนุมของท่าน แล้วใส่รหัสเพื่อเช็คชื่อ</p></div></div>
       <div class="card status" id="statusCard"><span class="dot"></span><div><b>กำลังตรวจสอบเวลา…</b></div></div>
       <div class="announce" id="announce" hidden></div>
       <input class="input" id="search" type="search" placeholder="🔎 ค้นหาชุมนุม หรือชื่อครูที่ปรึกษา" autocomplete="off">
@@ -35,9 +41,11 @@
 
     <!-- หน้าเช็คชื่อ -->
     <section id="viewCheck" class="stack" hidden></section>
+    <div class="foot">กิจกรรมพัฒนาผู้เรียน · ระบบเช็คชื่อชุมนุม</div>
   </main>
 
   <div class="bottom-bar" id="bottomBar" hidden>
+    <div class="progress"><i id="progBar"></i></div>
     <div class="wrap">
       <div class="tally" id="tally"></div>
       <button class="btn primary" id="btnReview">ตรวจสอบและส่ง</button>
@@ -84,6 +92,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <canvas id="confetti" hidden></canvas>
 
   <script src="config.js"></script>
   <script src="assets/api.js"></script>

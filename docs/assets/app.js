@@ -38,7 +38,9 @@ function bindStatic() {
 
 function renderHome() {
   const i = S.info;
-  $('#school').textContent = i.school + ' · ภาคเรียนที่ ' + i.term + '/' + i.year;
+  $('#school').textContent = i.school;
+  $('#helloText').textContent = greeting() + ' คุณครู';
+  $('#helloSub').textContent = 'ภาคเรียนที่ ' + i.term + '/' + i.year + ' · เลือกชุมนุมของท่าน แล้วใส่รหัสเพื่อเช็คชื่อ';
   const ann = $('#announce');
   ann.hidden = !i.announce;
   ann.textContent = i.announce ? '📢 ' + i.announce : '';
@@ -64,14 +66,18 @@ function renderStatus() {
   const w = S.info.window;
   const el = $('#statusCard');
   if (w.isOpen) {
+    const [oh, om] = w.open.split(':').map(Number), [ch, cm] = w.close.split(':').map(Number);
+    const span = ch * 60 + cm - (oh * 60 + om);
+    const pct = w.mode === 'เปิดตลอด' ? 100 : Math.max(0, Math.min(100, 100 - (serverMinutesNow(w) - oh * 60 - om) / span * 100));
     el.className = 'card status open';
-    el.innerHTML = '<span class="dot"></span><div><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week + (w.week === S.info.weeks ? ' (ส่งผล ผ/มผ)' : '') +
+    el.innerHTML = '<span class="ico">🔔</span><div class="body"><b>เปิดให้เช็คชื่อ · สัปดาห์ที่ ' + w.week + (w.week === S.info.weeks ? ' (ส่งผล ผ/มผ)' : '') +
       '</b><div class="muted small">' + thDate(w.weekDate, true) + ' · ' + w.open + '–' + w.close + ' น. · ' +
-      (w.mode === 'เปิดตลอด' ? 'แอดมินเปิดไว้ตลอด' : remainText(w)) + '</div></div>';
+      (w.mode === 'เปิดตลอด' ? 'แอดมินเปิดไว้ตลอด' : '<b style="font-size:inherit;color:var(--pink)">' + remainText(w) + '</b>') +
+      '</div><div class="timebar" title="เวลาที่เหลือ"><i style="width:' + pct + '%"></i></div></div>';
   } else {
     el.className = 'card status closed';
-    el.innerHTML = '<span class="dot"></span><div><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
-      (w.next ? '<br>ครั้งถัดไป: ' + thDate(w.next, true) + ' เวลา ' + w.open + ' น.' : '') + '</div></div>';
+    el.innerHTML = '<span class="ico">⏰</span><div class="body"><b>ยังไม่เปิดให้เช็คชื่อ</b><div class="muted small">' + esc(w.reason) +
+      (w.next ? '<br>ครั้งถัดไป: <b style="font-size:inherit;color:var(--blue)">' + thDate(w.next, true) + ' เวลา ' + w.open + ' น.</b>' : '') + '</div></div>';
   }
 }
 
@@ -84,13 +90,14 @@ function renderClubs() {
     .sort((a, b) => (b.no === mine) - (a.no === mine) || a.no.localeCompare(b.no));
   const grid = $('#clubGrid');
   if (!list.length) { grid.innerHTML = '<div class="empty">ไม่พบชุมนุมที่ค้นหา</div>'; return; }
-  grid.innerHTML = list.map(c => '<button class="club' + (c.no === mine ? ' mine' : '') + '" data-no="' + c.no + '">' +
+  grid.innerHTML = list.map((c, i) => '<button class="club c' + (Number(c.no) % 3) + (c.no === mine ? ' mine' : '') +
+    '" style="animation-delay:' + Math.min(i, 12) * 30 + 'ms" data-no="' + c.no + '">' +
     '<span class="ic">' + c.icon + '</span><span style="flex:1;min-width:0">' +
     '<span class="no">ชุมนุมที่ ' + Number(c.no) + (c.no === mine ? ' · ชุมนุมของฉัน' : '') + '</span>' +
     '<span class="nm" style="display:block">' + esc(c.name) + '</span>' +
     '<span class="tc" style="display:block">' + esc(c.teachers.join(', ')) + '</span>' +
     '<span class="meta"><span class="chip gray">' + c.count + ' รูป</span>' +
-    (c.submitted ? '<span class="chip ok">✓ ส่งสัปดาห์นี้แล้ว</span>' : '') + '</span></span></button>').join('');
+    (c.submitted ? '<span class="chip ok">✓ ส่งสัปดาห์นี้แล้ว</span>' : '') + '</span></span><span class="go">›</span></button>').join('');
   $$('.club', grid).forEach(b => b.addEventListener('click', () => askCode(b.dataset.no)));
 }
 
@@ -120,6 +127,8 @@ async function onLogin(e) {
     history.pushState({ v: 'check' }, '');
   } catch (err) {
     $('#codeErr').textContent = err.message;
+    shake($('#codeInput'));
+    $('#codeInput').select();
   } finally {
     busy(btn, false);
   }
@@ -199,15 +208,19 @@ function renderCheck() {
           '<div class="row"><button class="btn sm" id="btnAllPass">ให้ ผ ทุกรูป</button><button class="btn sm" id="btnByPct">ผ เฉพาะรูปที่มาเรียน ≥ 80%</button></div>';
       } else {
         html += '<div class="mode-btns">' +
-          '<button class="mode-btn full' + (S.mode === 'full' ? ' on' : '') + '" data-mode="full"><b>✓ ครบ</b><span>มาเรียนครบทุกรูป (เลือกรูปที่ลาได้)</span></button>' +
-          '<button class="mode-btn part' + (S.mode === 'part' ? ' on' : '') + '" data-mode="part"><b>✗ ไม่ครบ</b><span>มีนักเรียนไม่เข้าเรียน</span></button></div>';
+          '<button class="mode-btn full' + (S.mode === 'full' ? ' on' : '') + '" data-mode="full"><span class="e">🎉</span><b>ครบ</b><span>มาเรียนครบทุกรูป (เลือกรูปที่ลาได้)</span></button>' +
+          '<button class="mode-btn part' + (S.mode === 'part' ? ' on' : '') + '" data-mode="part"><span class="e">🙋</span><b>ไม่ครบ</b><span>มีนักเรียนไม่เข้าเรียน</span></button></div>';
         if (S.mode) {
-          html += '<div class="hint">' + (S.mode === 'full'
+          html += '<div class="hint' + (S.mode === 'part' ? ' pink' : '') + '">' + (S.mode === 'full'
             ? 'ทุกรูปถูกตั้งเป็น <b>มา</b> แล้ว หากมีรูปที่ลา ให้แตะ <b>ลา</b> ที่ชื่อรูปนั้น'
             : 'แตะ <b>ขาด</b> ที่ชื่อนักเรียนที่ไม่เข้าเรียน หรือ <b>ลา</b> สำหรับรูปที่ลา') + '</div>';
         }
       }
-      if (grade || S.mode) html += '<div class="card"><ul class="slist" id="slist">' + listHtml() + '</ul></div>';
+      if (grade || S.mode) {
+        html += '<div class="card">' + (d.students.length > 8
+          ? '<div class="list-tools"><input class="input" id="stFind" type="search" placeholder="🔎 ค้นหาชื่อ หรือชั้น" autocomplete="off"></div>' : '') +
+          '<ul class="slist" id="slist">' + listHtml() + '</ul></div>';
+      }
     }
   }
 
@@ -223,9 +236,16 @@ function renderCheck() {
     d.students.forEach(s => { const p = attendance(s.id).pct; S.marks[s.id] = p === null || p >= 80 ? 'ผ' : 'มผ'; });
     refreshList();
   });
+  const find = $('#stFind');
+  if (find) find.addEventListener('input', () => {
+    const q = find.value.trim().toLowerCase();
+    $$('#slist .srow').forEach(li => { li.hidden = q && !li.dataset.q.includes(q); });
+  });
   bindList();
   updateBar();
 }
+
+const AV_COLORS = ['#2f80ed', '#ec4899', '#f5b700', '#56ccf2', '#a78bfa', '#f472b6'];
 
 function rightsChip(r) {
   if (!r) return '';
@@ -257,7 +277,8 @@ function listHtml() {
       sub += ' · มา ' + at.p + '/' + at.held + (at.pct !== null ? ' (' + at.pct + '%)' : '');
       if (at.pct !== null && at.pct < 80) sub += ' <span class="chip bad">ต่ำกว่า 80%</span>';
     }
-    return '<li class="srow is-' + v + '" data-id="' + esc(s.id) + '"><span class="n">' + (i + 1) + '</span>' +
+    return '<li class="srow is-' + v + '" data-id="' + esc(s.id) + '" data-q="' + esc((s.name + ' ' + s.cls).toLowerCase()) + '"><span class="n">' + (i + 1) + '</span>' +
+      '<span class="av" style="background:' + AV_COLORS[i % AV_COLORS.length] + '">' + esc(initials(s.name)) + '</span>' +
       '<span class="who"><b>' + esc(s.name) + '</b><small>' + sub + '</small></span>' +
       '<span class="seg">' + opts.map(o => '<button type="button" data-v="' + o + '" class="' + (v === o ? 'on' : '') + '">' + MARK_LABEL[o] + '</button>').join('') +
       '</span></li>';
@@ -268,8 +289,9 @@ function bindList() {
   $$('#slist .srow').forEach(li => {
     $$('.seg button', li).forEach(b => b.addEventListener('click', () => {
       S.marks[li.dataset.id] = b.dataset.v;
-      li.className = 'srow is-' + b.dataset.v;
+      li.className = 'srow is-' + b.dataset.v + ' flash';
       $$('.seg button', li).forEach(x => x.classList.toggle('on', x === b));
+      buzz();
       saveDraft();
       updateBar();
     }));
@@ -317,6 +339,8 @@ function updateBar() {
     ? '<span class="chip ok">ผ ' + t['ผ'] + '</span><span class="chip bad">มผ ' + t['มผ'] + '</span>'
     : '<span class="chip ok">มา ' + t['1'] + '</span><span class="chip warn">ลา ' + t['ล'] + '</span><span class="chip bad">ขาด ' + t['0'] + '</span>';
   if (t.missing) $('#tally').innerHTML += '<span class="chip gray">ยังไม่เลือก ' + t.missing + '</span>';
+  const total = d.students.length || 1;
+  $('#progBar').style.width = ((total - t.missing) / total * 100) + '%';
   $('#btnReview').disabled = t.missing > 0;
 }
 
@@ -343,9 +367,11 @@ function openConfirm() {
   if (!by) { toast('กรุณาใส่ชื่อผู้เช็คชื่อ', 'bad'); $('#byName').focus(); return; }
   store('checkerName', by);
   $('#cfWhere').textContent = d.club.name + ' · สัปดาห์ที่ ' + d.active.week + ' · ' + thDate(d.sessions[d.active.week - 1], true);
+  const n = k => '<b data-count="' + k + '">0</b>';
   $('#cfSum').innerHTML = grade
-    ? '<div class="ok"><b>' + t['ผ'] + '</b>ผ่าน (ผ)</div><div class="bad"><b>' + t['มผ'] + '</b>ไม่ผ่าน (มผ)</div><div><b>' + d.students.length + '</b>ทั้งหมด</div>'
-    : '<div class="ok"><b>' + t['1'] + '</b>มา</div><div class="warn"><b>' + t['ล'] + '</b>ลา</div><div class="bad"><b>' + t['0'] + '</b>ขาด</div>';
+    ? '<div class="ok">' + n(t['ผ']) + 'ผ่าน (ผ)</div><div class="bad">' + n(t['มผ']) + 'ไม่ผ่าน (มผ)</div><div>' + n(d.students.length) + 'ทั้งหมด</div>'
+    : '<div class="ok">' + n(t['1']) + 'มา</div><div class="warn">' + n(t['ล']) + 'ลา</div><div class="bad">' + n(t['0']) + 'ขาด</div>';
+  countUp($('#cfSum'));
   const names = v => d.students.filter(s => S.marks[s.id] === v).map(s => esc(s.name) + ' (' + esc(s.cls) + ')');
   let nh = '';
   if (grade) {
@@ -372,7 +398,7 @@ function openConfirm() {
 async function onSend(e) {
   e.preventDefault();
   const code = $('#cfCode').value.trim();
-  if (code !== S.code) { $('#cfErr').textContent = 'รหัสไม่ตรงกับที่ใช้เข้าสู่ระบบ'; return; }
+  if (code !== S.code) { $('#cfErr').textContent = 'รหัสไม่ตรงกับที่ใช้เข้าสู่ระบบ'; shake($('#cfCode')); return; }
   const btn = $('#btnSend');
   busy(btn, true, 'กำลังส่ง…');
   try {
@@ -385,6 +411,7 @@ async function onSend(e) {
     showDone(data, week);
   } catch (err) {
     $('#cfErr').textContent = err.message;
+    shake($('#cfCode'));
   } finally {
     busy(btn, false);
   }
@@ -394,13 +421,20 @@ function showDone(data, week) {
   const t = tally(), grade = S.mode === 'grade';
   S.data = data;
   $('#bottomBar').hidden = true;
-  $('#viewCheck').innerHTML = '<div class="card done stack"><div class="big">✅</div><h2>ส่งเรียบร้อยแล้ว</h2>' +
+  const n = k => '<b data-count="' + k + '">0</b>';
+  $('#viewCheck').innerHTML = '<div class="card done stack"><div class="big">' + (grade || t['0'] ? '✅' : '🏆') + '</div><h2>ส่งเรียบร้อยแล้ว</h2><div class="muted">ขอบคุณที่ช่วยเช็คชื่อ 💙</div>' +
     '<div class="muted">' + esc(data.club.name) + ' · สัปดาห์ที่ ' + week + '</div>' +
-    '<div>' + (grade ? 'ผ ' + t['ผ'] + ' · มผ ' + t['มผ'] : 'มา ' + t['1'] + ' · ลา ' + t['ล'] + ' · ขาด ' + t['0']) + '</div>' +
+    '<div class="sum-grid">' + (grade
+      ? '<div class="ok">' + n(t['ผ']) + 'ผ</div><div class="bad">' + n(t['มผ']) + 'มผ</div><div>' + n(data.students.length) + 'ทั้งหมด</div>'
+      : '<div class="ok">' + n(t['1']) + 'มา</div><div class="warn">' + n(t['ล']) + 'ลา</div><div class="bad">' + n(t['0']) + 'ขาด</div>') + '</div>' +
+    (!grade && !t['0'] && !t['ล'] ? '<div><span class="chip pink">✨ มาครบทุกรูป เยี่ยมมาก!</span></div>' : '') +
     '<div>' + rightsChip(data.rights) + '</div>' +
     '<div class="row" style="justify-content:center"><button class="btn" id="btnView">ดูรายการที่ส่ง</button>' +
     '<button class="btn primary" id="btnHome">กลับหน้าแรก</button></div></div>';
   $('#btnHome').addEventListener('click', () => history.back());
   $('#btnView').addEventListener('click', () => showCheck(data));
   window.scrollTo(0, 0);
+  countUp($('#viewCheck'));
+  confetti();
+  buzz([20, 60, 20]);
 }

@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0f766e">
+  <meta name="theme-color" content="#2f80ed">
   <meta name="robots" content="noindex">
   <title>หลังบ้านเช็คชื่อชุมนุม</title>
-  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="https://i.ibb.co/mVCtZ7mL/image.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,15 +15,20 @@
 <body>
   <header class="topbar">
     <div class="wrap">
+      <img class="logo" src="https://i.ibb.co/mVCtZ7mL/image.png" alt="ตราโรงเรียน" width="52" height="52">
       <h1>หลังบ้าน · ผู้ดูแลระบบ<small>หัวหน้ากิจกรรมพัฒนาผู้เรียน</small></h1>
       <span class="sp"></span>
-      <a href="index.html">หน้าเช็คชื่อ</a>
+      <div class="top-acts">
+        <button type="button" id="btnFont" title="ปรับขนาดตัวอักษร" aria-label="ปรับขนาดตัวอักษร">ก+</button>
+        <a href="index.html" title="หน้าเช็คชื่อ"><span class="ico-sm">📋</span><span class="lbl">หน้าเช็คชื่อ</span></a>
+      </div>
     </div>
   </header>
   <div class="demo-bar" id="demoBar" hidden>โหมดทดลอง: ใช้ข้อมูลจำลอง (รหัสแอดมิน admin2569)</div>
 
   <main class="wrap">
-    <section id="viewLogin" class="card stack" style="max-width:420px;margin:24px auto">
+    <section id="viewLogin" class="card stack" style="max-width:420px;margin:24px auto;text-align:center">
+      <img class="logo" src="https://i.ibb.co/mVCtZ7mL/image.png" alt="" style="width:84px;height:84px;margin:0 auto;display:block">
       <h2>เข้าสู่ระบบผู้ดูแล</h2>
       <form id="formLogin" class="stack">
         <input class="input" id="pw" type="password" placeholder="รหัสแอดมิน" autocomplete="current-password" required>
